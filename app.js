@@ -3,6 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import connectDB from "./Configs/db.js";
+import authRoutes from './Routes/authRoutes.js'
+import cloudinary from "./Utils/cloudinary.js";
 
 dotenv.config();
 
@@ -23,6 +25,8 @@ app.get("/", (req, res) => {
         message: "Food Sharing Backend API is running!"
     });
 });
+
+app.use("/api/auth", authRoutes);
 
 
  
