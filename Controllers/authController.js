@@ -1,33 +1,11 @@
  
 import bcrypt from "bcryptjs";
 import User from "../Models/User.js";
-import cloudinary from "../Utils/cloudinary.js";
 
+import {
+    uploadToCloudinary
+} from "../Utils/cloudinaryUpload.js";
 
- 
-
-const uploadToCloudinary = (fileBuffer) => {
-    return new Promise((resolve, reject) => {
-
-        const uploadStream = cloudinary.uploader.upload_stream(
-            {
-                folder: "food-sharing/profile-images",
-                resource_type: "image"
-            },
-            (error, result) => {
-
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(result);
-                }
-
-            }
-        );
-
-        uploadStream.end(fileBuffer);
-    });
-};
 
  
 
@@ -46,7 +24,10 @@ export const registerUser = async (req, res) => {
         } = req.body;
 
 
-       
+        // ==========================================
+        // VALIDATION
+        // ==========================================
+
         if (!fullName || !email || !password || !role) {
 
             return res.status(400).json({
@@ -57,7 +38,10 @@ export const registerUser = async (req, res) => {
         }
 
 
-         
+        // ==========================================
+        // CHECK EXISTING USER
+        // ==========================================
+
         const existingUser = await User.findOne({ email });
 
         if (existingUser) {
@@ -69,41 +53,74 @@ export const registerUser = async (req, res) => {
 
         }
 
- 
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // ==========================================
+        // HASH PASSWORD
+        // ==========================================
 
- 
-        let profileImage = null;
+        const hashedPassword = await bcrypt.hash(
+            password,
+            10
+        );
+
+
+        // ==========================================
+        // PROFILE IMAGE
+        // ==========================================
+
+        let profileImage = {
+            url: null,
+            publicId: null
+        };
+
 
         if (req.file) {
 
             const uploadResult = await uploadToCloudinary(
-                req.file.buffer
+                req.file.buffer,
+                "meal-bridge/profile-images"
             );
 
-            profileImage = uploadResult.secure_url;
+
+            profileImage = {
+
+                url: uploadResult.secure_url,
+
+                publicId: uploadResult.public_id
+
+            };
 
         }
 
 
-      
+        // ==========================================
+        // CREATE USER
+        // ==========================================
 
         const user = await User.create({
 
             fullName,
+
             email,
+
             password: hashedPassword,
+
             phoneNumber,
+
             profileImage,
+
             role,
+
             address,
+
             location
 
         });
 
 
-     
+        // ==========================================
+        // RESPONSE
+        // ==========================================
 
         const userResponse = {
 
@@ -143,6 +160,7 @@ export const registerUser = async (req, res) => {
 
         console.error("Register Error:", error);
 
+
         return res.status(500).json({
 
             success: false,
@@ -157,7 +175,10 @@ export const registerUser = async (req, res) => {
 
 };
 
- 
+
+// ==========================================
+// LOGIN USER
+// ==========================================
 
 export const loginUser = async (req, res) => {
 
@@ -169,59 +190,88 @@ export const loginUser = async (req, res) => {
         } = req.body;
 
 
-     
+        // ==========================================
+        // VALIDATION
+        // ==========================================
 
         if (!email || !password) {
 
             return res.status(400).json({
+
                 success: false,
+
                 message: "Email and password are required"
+
             });
 
         }
 
- 
 
-        const user = await User.findOne({ email });
+        // ==========================================
+        // FIND USER
+        // ==========================================
+
+        const user = await User.findOne({
+            email
+        });
+
 
         if (!user) {
 
             return res.status(401).json({
+
                 success: false,
+
                 message: "Invalid email or password"
+
             });
 
         }
 
 
-       
+        // ==========================================
+        // CHECK ACTIVE STATUS
+        // ==========================================
+
         if (!user.isActive) {
 
             return res.status(403).json({
+
                 success: false,
+
                 message: "Your account has been deactivated"
+
             });
 
         }
 
 
-    
+        // ==========================================
+        // CHECK PASSWORD
+        // ==========================================
+
         const isPasswordCorrect = await bcrypt.compare(
             password,
             user.password
         );
 
+
         if (!isPasswordCorrect) {
 
             return res.status(401).json({
+
                 success: false,
+
                 message: "Invalid email or password"
+
             });
 
         }
 
 
- 
+        // ==========================================
+        // LOGIN RESPONSE
+        // ==========================================
 
         return res.status(200).json({
 
@@ -255,6 +305,7 @@ export const loginUser = async (req, res) => {
     } catch (error) {
 
         console.error("Login Error:", error);
+
 
         return res.status(500).json({
 
