@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 
 import connectDB from "./Configs/db.js";
 import authRoutes from './Routes/authRoutes.js'
+import donationRoutes from './Routes/donationRoutes.js'
 import cloudinary from "./Utils/cloudinary.js";
 
 dotenv.config();
@@ -27,7 +28,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
-
+app.use("/api/donations", donationRoutes);
 
  
 const PORT = process.env.PORT || 5003;
