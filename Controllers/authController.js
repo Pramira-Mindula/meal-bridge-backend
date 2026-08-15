@@ -1,4 +1,3 @@
- 
 import bcrypt from "bcryptjs";
 import User from "../Models/User.js";
 
@@ -6,8 +5,14 @@ import {
     uploadToCloudinary
 } from "../Utils/cloudinaryUpload.js";
 
+import {
+    generateAccessToken
+} from "../Utils/jwt.js";
 
- 
+
+// ==========================================
+// REGISTER USER
+// ==========================================
 
 export const registerUser = async (req, res) => {
 
@@ -176,6 +181,7 @@ export const registerUser = async (req, res) => {
 };
 
 
+
 // ==========================================
 // LOGIN USER
 // ==========================================
@@ -270,6 +276,13 @@ export const loginUser = async (req, res) => {
 
 
         // ==========================================
+        // GENERATE ACCESS TOKEN
+        // ==========================================
+
+        const accessToken = generateAccessToken(user);
+
+
+        // ==========================================
         // LOGIN RESPONSE
         // ==========================================
 
@@ -278,6 +291,8 @@ export const loginUser = async (req, res) => {
             success: true,
 
             message: "Login successful",
+
+            accessToken,
 
             user: {
 
@@ -295,7 +310,9 @@ export const loginUser = async (req, res) => {
 
                 address: user.address,
 
-                location: user.location
+                location: user.location,
+
+                isActive: user.isActive
 
             }
 
@@ -320,4 +337,3 @@ export const loginUser = async (req, res) => {
     }
 
 };
- 
