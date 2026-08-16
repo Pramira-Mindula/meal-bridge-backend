@@ -7,6 +7,7 @@ import authRoutes from './Routes/authRoutes.js'
 import donationRoutes from './Routes/donationRoutes.js'
 import cloudinary from "./Utils/cloudinary.js";
 import requestRoutes from './Routes/requestRoutes.js'
+import deliveryRoutes from './Routes/deliveryRoutes.js'
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/donations", donationRoutes);
 app.use("/api/foodrequests", requestRoutes);
+app.use("/api/delivery", deliveryRoutes);
 
  
 const PORT = process.env.PORT || 5003;

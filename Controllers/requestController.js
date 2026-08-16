@@ -1,6 +1,7 @@
 import FoodRequest from "../Models/FoodRequest.js";
 import Donation from "../Models/Donation.js";
 import User from "../Models/User.js";
+import Delivery from "../Models/Delivary.js";
 
  
 export const createFoodRequest = async (req, res) => {
@@ -418,9 +419,12 @@ export const acceptFoodRequest = async (
         const { id } = req.params;
 
 
-        const request =
-            await FoodRequest.findById(id)
-                .populate("donation");
+        // =====================================================
+        // GET FOOD REQUEST
+        // =====================================================
+
+        const request = await FoodRequest.findById(id)
+            .populate("donation");
 
 
         if (!request) {
@@ -431,7 +435,9 @@ export const acceptFoodRequest = async (
         }
 
 
-       
+        // =====================================================
+        // CHECK DONATION OWNER
+        // =====================================================
 
         if (
             request.donation.donor.toString() !==
@@ -439,30 +445,41 @@ export const acceptFoodRequest = async (
         ) {
             return res.status(403).json({
                 success: false,
-                message: "You can only manage requests for your donations"
+                message:
+                    "You can only manage requests for your donations"
             });
         }
 
- 
+
+        // =====================================================
+        // CHECK REQUEST STATUS
+        // =====================================================
 
         if (request.status !== "PENDING") {
             return res.status(400).json({
                 success: false,
-                message: "Only pending requests can be accepted"
+                message:
+                    "Only pending requests can be accepted"
             });
         }
 
 
-         
+        // =====================================================
+        // CHECK DONATION STATUS
+        // =====================================================
 
         if (request.donation.status !== "AVAILABLE") {
             return res.status(400).json({
                 success: false,
-                message: "This donation is no longer available"
+                message:
+                    "This donation is no longer available"
             });
         }
 
- 
+
+        // =====================================================
+        // CHECK QUANTITY
+        // =====================================================
 
         if (
             request.quantityRequested >
@@ -470,11 +487,49 @@ export const acceptFoodRequest = async (
         ) {
             return res.status(400).json({
                 success: false,
-                message: "Requested quantity is no longer available"
+                message:
+                    "Requested quantity is no longer available"
             });
         }
 
- 
+
+        // =====================================================
+        // GET RECIPIENT
+        // =====================================================
+
+        const recipient = await User.findById(
+            request.recipient
+        );
+
+
+        if (!recipient) {
+            return res.status(404).json({
+                success: false,
+                message: "Recipient not found"
+            });
+        }
+
+
+        // =====================================================
+        // CHECK RECIPIENT DELIVERY INFORMATION
+        // =====================================================
+
+        if (
+            !recipient.address ||
+            recipient.location?.latitude === undefined ||
+            recipient.location?.longitude === undefined
+        ) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Recipient must have an address and location before the request can be accepted"
+            });
+        }
+
+
+        // =====================================================
+        // ACCEPT FOOD REQUEST
+        // =====================================================
 
         request.status = "ACCEPTED";
         request.respondedAt = new Date();
@@ -482,7 +537,9 @@ export const acceptFoodRequest = async (
         await request.save();
 
 
-  
+        // =====================================================
+        // UPDATE DONATION
+        // =====================================================
 
         request.donation.status = "CLAIMED";
 
@@ -495,14 +552,78 @@ export const acceptFoodRequest = async (
         await request.donation.save();
 
 
-     
+        // =====================================================
+        // CREATE DELIVERY
+        // =====================================================
+
+        const existingDelivery =
+            await Delivery.findOne({
+                foodRequest: request._id
+            });
+
+
+        if (!existingDelivery) {
+
+            await Delivery.create({
+
+                foodRequest: request._id,
+
+                donation: request.donation._id,
+
+                recipient: request.recipient,
+
+                volunteer: null,
+
+
+                // -----------------------------
+                // PICKUP
+                // -----------------------------
+
+                pickupAddress:
+                    request.donation.pickupAddress,
+
+                pickupLocation: {
+                    latitude:
+                        request.donation.pickupLocation.latitude,
+
+                    longitude:
+                        request.donation.pickupLocation.longitude
+                },
+
+
+                // -----------------------------
+                // DELIVERY
+                // -----------------------------
+
+                deliveryAddress:
+                    recipient.address,
+
+                deliveryLocation: {
+                    latitude:
+                        recipient.location.latitude,
+
+                    longitude:
+                        recipient.location.longitude
+                },
+
+
+                status: "PENDING"
+            });
+        }
+
+
+        // =====================================================
+        // REJECT OTHER PENDING REQUESTS
+        // =====================================================
 
         await FoodRequest.updateMany(
             {
                 donation: request.donation._id,
+
                 _id: {
                     $ne: request._id
                 },
+
                 status: "PENDING"
             },
             {
@@ -514,11 +635,17 @@ export const acceptFoodRequest = async (
         );
 
 
+        // =====================================================
+        // POPULATE RESPONSE
+        // =====================================================
+
         await request.populate([
             {
                 path: "recipient",
-                select: "fullName email phoneNumber"
+                select:
+                    "fullName email phoneNumber address location"
             },
+
             {
                 path: "donation",
                 select:
@@ -527,11 +654,17 @@ export const acceptFoodRequest = async (
         ]);
 
 
+        // =====================================================
+        // RESPONSE
+        // =====================================================
+
         return res.status(200).json({
             success: true,
-            message: "Food request accepted successfully",
+            message:
+                "Food request accepted successfully",
             request
         });
+
 
     } catch (error) {
 
@@ -540,14 +673,15 @@ export const acceptFoodRequest = async (
             error
         );
 
+
         return res.status(500).json({
             success: false,
-            message: "Failed to accept food request",
+            message:
+                "Failed to accept food request",
             error: error.message
         });
     }
 };
-
 
 
  

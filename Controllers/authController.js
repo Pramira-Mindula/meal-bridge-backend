@@ -18,15 +18,27 @@ export const registerUser = async (req, res) => {
 
     try {
 
-        const {
-            fullName,
-            email,
-            password,
-            phoneNumber,
-            role,
-            address,
-            location
-        } = req.body;
+       const {
+    fullName,
+    email,
+    password,
+    phoneNumber,
+    role,
+    address
+} = req.body;
+
+let location = undefined;
+
+if (req.body.location) {
+    try {
+        location = JSON.parse(req.body.location);
+    } catch (error) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid location format"
+        });
+    }
+}
 
 
         // ==========================================
