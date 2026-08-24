@@ -8,6 +8,11 @@ import {
 
 
 // =====================================================
+// DONATION CONTROLLER
+// Handles operations for food donations
+// =====================================================
+
+// =====================================================
 // CREATE DONATION
 // POST /api/donations
 // =====================================================
@@ -384,6 +389,7 @@ export const updateDonation = async (req, res) => {
         // -------------------------------------------------
         // Don't allow updating claimed/completed donations
         // -------------------------------------------------
+        // Update validation logic begins here
 
         if (
             donation.status === "CLAIMED" ||
@@ -395,6 +401,8 @@ export const updateDonation = async (req, res) => {
                 message: "This donation can no longer be updated"
             });
         }
+        
+        // Update validation logic ends here
 
 
         const {

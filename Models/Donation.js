@@ -130,4 +130,5 @@ const donationSchema = new mongoose.Schema(
 
 const Donation = mongoose.model("Donation", donationSchema);
 
+// Exporting Donation model for use in controllers
 export default Donation;

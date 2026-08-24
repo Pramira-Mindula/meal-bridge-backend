@@ -11,6 +11,7 @@ import deliveryRoutes from './Routes/deliveryRoutes.js'
 
 dotenv.config();
 
+// Initialize express app
 const app = express();
 
  

@@ -18,6 +18,11 @@ const router = express.Router();
 
 
 // =====================================================
+// DONATION ROUTES
+// Define endpoints for donation-related operations
+// =====================================================
+
+// =====================================================
 // PUBLIC / AUTHENTICATED DONATION ROUTES
 // =====================================================
 
@@ -55,6 +60,7 @@ router.post(
 );
 
 
+// Update donation details endpoint
 // Update donation
 router.put(
     "/:id",
