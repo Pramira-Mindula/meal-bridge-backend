@@ -128,6 +128,11 @@ const donationSchema = new mongoose.Schema(
 );
 
 
+// Small non-functional code segment for checking default statuses
+donationSchema.statics.getDefaultStatus = function() {
+    return "AVAILABLE";
+};
+
 const Donation = mongoose.model("Donation", donationSchema);
 
 // Exporting Donation model for use in controllers

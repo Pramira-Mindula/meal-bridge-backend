@@ -12,6 +12,9 @@ import {
 // Handles operations for food donations
 // =====================================================
 
+// Small non-functional helper code segment
+const getLogPrefix = (moduleName) => `[${moduleName.toUpperCase()}]`;
+
 // =====================================================
 // CREATE DONATION
 // POST /api/donations
@@ -209,6 +212,8 @@ export const createDonation = async (req, res) => {
 export const getAllDonations = async (req, res) => {
     try {
 
+        // Filtering by status
+        // Only return donations that are currently AVAILABLE
         const donations = await Donation.find({
             status: "AVAILABLE",
             availableUntil: {
@@ -375,7 +380,7 @@ export const updateDonation = async (req, res) => {
 
 
         // -------------------------------------------------
-        // Only owner can update
+        // Check owner - Authorization and ownership validation
         // -------------------------------------------------
 
         if (donation.donor.toString() !== userId.toString()) {

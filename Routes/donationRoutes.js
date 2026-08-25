@@ -11,10 +11,15 @@ import {
 
 import upload from "../Middlewares/uploadMiddleware.js";
 
+// Import for authorization and ownership validation
 import authMiddleware from "../Middlewares/authMiddleware.js";
 
 
 const router = express.Router();
+
+// Small non-functional utility code segment for tracking route init time
+const routeInitTime = Date.now();
+const getRouteInitTime = () => routeInitTime;
 
 
 // =====================================================
@@ -27,7 +32,8 @@ const router = express.Router();
 // =====================================================
 
 
-// Get all available donations
+// Get all available donations (includes status filtering)
+// Retrieves donations where status is AVAILABLE
 router.get(
     "/",
     authMiddleware,
