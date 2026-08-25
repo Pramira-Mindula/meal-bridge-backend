@@ -133,6 +133,27 @@ donationSchema.statics.getDefaultStatus = function() {
     return "AVAILABLE";
 };
 
+//UI integration purposes
+// Formats donation data for a Reusable Donation Card component
+donationSchema.methods.toDonationCardFormat = function() {
+    return {
+        title: this.foodName,
+        category: this.category,
+        expiresAt: this.availableUntil // Facilitates date filtering display
+    };
+};
+
+// UI utility: Check if the donation has already expired
+donationSchema.methods.isExpired = function() {
+    return new Date() > this.availableUntil;
+};
+
+// Non-functional virtual property for UI component rendering
+donationSchema.virtual('isUrgent').get(function() {
+    // Stub implementation
+    return false; 
+});
+
 const Donation = mongoose.model("Donation", donationSchema);
 
 // Exporting Donation model for use in controllers

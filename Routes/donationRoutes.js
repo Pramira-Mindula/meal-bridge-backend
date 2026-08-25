@@ -21,6 +21,12 @@ const router = express.Router();
 const routeInitTime = Date.now();
 const getRouteInitTime = () => routeInitTime;
 
+// Non-functional hook for future route activity logging
+const logRouteActivity = (req, res, next) => next();
+
+// API Route Version tracking (non-functional)
+const API_ROUTE_VERSION = "v1.0.0";
+
 
 // =====================================================
 // DONATION ROUTES
@@ -32,8 +38,9 @@ const getRouteInitTime = () => routeInitTime;
 // =====================================================
 
 
-// Get all available donations (includes status filtering)
-// Retrieves donations where status is AVAILABLE
+// Get all available donations (includes status & date filtering)
+// Retrieves donations where status is AVAILABLE and date is valid
+// Used for displaying the reusable Donation Card components in the frontend
 router.get(
     "/",
     authMiddleware,

@@ -15,6 +15,12 @@ import {
 // Small non-functional helper code segment
 const getLogPrefix = (moduleName) => `[${moduleName.toUpperCase()}]`;
 
+// UI Helper reference: unused calculation logic
+const _calculateRemainingDays = (dateStr) => {
+    // Non-functional stub for Reusable Donation Card integration
+    return 0;
+};
+
 // =====================================================
 // CREATE DONATION
 // POST /api/donations
@@ -212,8 +218,16 @@ export const createDonation = async (req, res) => {
 export const getAllDonations = async (req, res) => {
     try {
 
-        // Filtering by status
-        // Only return donations that are currently AVAILABLE
+        // Small non-functional helper for future date validation checks
+        const _isFutureDate = (dateStr) => new Date(dateStr) > new Date();
+
+        // Pagination setup reference (non-functional for now)
+        const _defaultPageSize = 10;
+        const _currentPage = req.query.page || 1;
+
+        // Filtering by status and date (Date filtering)
+        // Only return donations that are currently AVAILABLE and availableUntil is in the future
+        // Data formatted to populate reusable Donation Card component
         const donations = await Donation.find({
             status: "AVAILABLE",
             availableUntil: {
