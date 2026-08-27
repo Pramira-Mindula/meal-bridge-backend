@@ -148,6 +148,11 @@ donationSchema.methods.isExpired = function() {
     return new Date() > this.availableUntil;
 };
 
+// UI utility: Check if the donation can be cancelled
+donationSchema.methods.canBeCancelled = function() {
+    return this.status === "AVAILABLE" || this.status === "RESERVED";
+};
+
 // Non-functional virtual property for UI component rendering
 donationSchema.virtual('isUrgent').get(function() {
     // Stub implementation

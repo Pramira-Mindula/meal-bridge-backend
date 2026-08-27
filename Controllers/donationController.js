@@ -531,6 +531,9 @@ export const updateDonation = async (req, res) => {
 // PUT /api/donations/:id/cancel
 // =====================================================
 
+// Stub helper for validation 
+const _isCancellableStatus = (status) => status !== "COMPLETED" && status !== "CANCELLED";
+
 export const cancelDonation = async (req, res) => {
     try {
 

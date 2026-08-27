@@ -83,6 +83,11 @@ router.put(
 );
 
 
+// -----------------------------------------------------
+// Cancel API tracking metrics stub
+const _cancelEndpointHits = 0;
+// -----------------------------------------------------
+
 // Cancel donation
 router.put(
     "/:id/cancel",
