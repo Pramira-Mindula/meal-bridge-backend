@@ -1,12 +1,12 @@
 # Food Recipient Component
 
-## 📌 Overview
+##  Overview
 
 The **Food Recipient Component** is a part of the Community Food-Sharing & Surplus Application. It allows people who need food to find available food donations, view donation details, reserve or request food, and track the status of their requests.
 
 The component is designed to make the food collection process simple, accessible, and efficient for food recipients.
 
-## 🎯 Objectives
+##  Objectives
 
 * Allow recipients to view available food donations.
 * Search and filter food based on their requirements.
@@ -16,7 +16,7 @@ The component is designed to make the food collection process simple, accessible
 * Receive notifications about request updates.
 * Provide a simple and user-friendly interface.
 
-## ✨ Main Features
+##  Main Features
 
 ### 1. Available Food
 
@@ -80,7 +80,7 @@ The component focuses on:
 * Mobile-friendly layouts
 * English, Sinhala, and Tamil localization support
 
-## 🛠️ Technologies Used
+##  Technologies Used
 
 * **React.js** – Frontend development
 * **JavaScript** – Application logic
@@ -89,7 +89,7 @@ The component focuses on:
 * **Vite** – Development/build tool
 * **Git & GitHub** – Version control
 
-## 📂 Component Structure
+##  Component Structure
 
 ```text
 src/
@@ -111,7 +111,7 @@ src/
 
 > Update the file names above if your actual project structure is different.
 
-## 🚀 Installation & Setup
+##  Installation & Setup
 
 Clone the project:
 
@@ -139,7 +139,7 @@ npm run dev
 
 The application will then be available through the local development URL shown in the terminal.
 
-## 🔄 Recipient User Flow
+##  Recipient User Flow
 
 ```text
 Login
@@ -161,7 +161,7 @@ Collect / Receive Food
 Complete Request
 ```
 
-## 🔐 User Permissions
+##  User Permissions
 
 Food recipients can:
 
@@ -181,7 +181,7 @@ Recipients cannot:
 * Modify donor information
 * Manage other users
 
-## 🧪 Testing
+##  Testing
 
 The component should be tested for:
 
@@ -197,7 +197,7 @@ The component should be tested for:
 * Form validation
 * Error handling
 
-## 🌱 Project Contribution
+##  Project Contribution
 
 This component supports **SDG 2 – Zero Hunger** by helping people in need access surplus food donated by restaurants, supermarkets, households, and other food donors.
 
@@ -206,12 +206,12 @@ It also contributes to:
 * **SDG 12 – Responsible Consumption and Production**
 * **SDG 17 – Partnerships for the Goals**
 
-## 👩‍💻 Developer
+##  Developer
 
 **Food Recipient Component**
 Community Food Connect
 SLIIT – Software Engineering Project
 
-## 📄 License
+##  License
 
 This project is developed for academic purposes as part of the SLIIT Software Engineering project.

@@ -30,7 +30,7 @@ const authMiddleware = (req, res, next) => {
 
 
         next();
-
+//catch any errors during token verification
     } catch (error) {
 
         console.error("Auth Middleware Error:", error);
