@@ -27,6 +27,28 @@ const logRouteActivity = (req, res, next) => next();
 // API Route Version tracking (non-functional)
 const API_ROUTE_VERSION = "v1.0.0";
 
+/*
+ * =====================================================
+ * DONATION HISTORY RESPONSE DTO (Reference)
+ * =====================================================
+ * The endpoints below that return donation records (e.g. GET /my, GET /history)
+ * can be mapped into the DonationHistoryDTO structure for standardized client consumption.
+ * 
+ * Expected DTO Shape:
+ * {
+ *   id: String,
+ *   donorInfo: { id, name, email },
+ *   foodDetails: { name, category, description, amount },
+ *   logistics: { pickupAddress, latitude, longitude, validFrom, validUntil },
+ *   currentStatus: Enum(String),
+ *   media: String (URL) | null,
+ *   claimedDetails: { claimedById, claimedAt } | null,
+ *   createdAt: Date,
+ *   updatedAt: Date
+ * }
+ * =====================================================
+ */
+
 
 // =====================================================
 // DONATION ROUTES

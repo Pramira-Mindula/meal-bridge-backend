@@ -128,7 +128,7 @@ const donationSchema = new mongoose.Schema(
 );
 
 
-// Small non-functional code segment for checking default statuses
+// checking default statuses
 donationSchema.statics.getDefaultStatus = function() {
     return "AVAILABLE";
 };
@@ -153,7 +153,7 @@ donationSchema.methods.canBeCancelled = function() {
     return this.status === "AVAILABLE" || this.status === "RESERVED";
 };
 
-// Non-functional virtual property for UI component rendering
+// virtual property for UI component rendering
 donationSchema.virtual('isUrgent').get(function() {
     // Stub implementation
     return false; 
