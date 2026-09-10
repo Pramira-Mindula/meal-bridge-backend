@@ -38,6 +38,9 @@ pnpm-debug.log*
 # TESTING
 # ============================================================
 tests/
+!tests/
+tests/*
+!tests/volunteerController.test.js
 coverage/
 .nyc_output/
 

@@ -101,8 +101,10 @@ const deliverySchema = new mongoose.Schema(
             type: String,
             enum: [
                 "PENDING",
+                "ASSIGNED",
                 "ACCEPTED",
                 "PICKED_UP",
+                "IN_TRANSIT",
                 "DELIVERED",
                 "CANCELLED"
             ],

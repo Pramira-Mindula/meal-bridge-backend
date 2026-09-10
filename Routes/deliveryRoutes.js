@@ -3,10 +3,10 @@ import express from "express";
 import {
     getAvailableDeliveries,
     acceptDelivery,
+    cancelDelivery,
     getMyDeliveries,
     getDeliveryById,
     markDeliveryPickedUp,
-    markDeliveryInTransit,
     markDeliveryDelivered
 } from "../Controllers/deliveryController.js";
 
@@ -56,6 +56,16 @@ router.put(
 );
 
 
+// Cancel an accepted delivery
+// PUT /api/deliveries/:id/cancel
+
+router.put(
+    "/:id/cancel",
+    authMiddleware,
+    cancelDelivery
+);
+
+
 // Mark picked up
 // PUT /api/deliveries/:id/pickup
 
@@ -63,16 +73,6 @@ router.put(
     "/:id/pickup",
     authMiddleware,
     markDeliveryPickedUp
-);
-
-
-// Mark in transit
-// PUT /api/deliveries/:id/transit
-
-router.put(
-    "/:id/transit",
-    authMiddleware,
-    markDeliveryInTransit
 );
 
 

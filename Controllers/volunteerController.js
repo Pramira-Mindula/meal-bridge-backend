@@ -218,7 +218,8 @@ export const getVolunteerSummary = async (
         });
 
         // ── Find the single active (in-progress) delivery ───
-        // Active = ACCEPTED, PICKED_UP, or IN_TRANSIT
+        // PICKED_UP is retained for deliveries created under the previous flow.
+        // New deliveries move directly from ACCEPTED to IN_TRANSIT on pickup.
         const activeDeliveryDoc = await Delivery.findOne({
             volunteer: userId,
             status: { $in: ["ACCEPTED", "PICKED_UP", "IN_TRANSIT"] }
