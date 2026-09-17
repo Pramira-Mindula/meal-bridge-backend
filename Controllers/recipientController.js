@@ -1,4 +1,3 @@
- 
 import User from "../Models/User.js";
 
 
@@ -7,7 +6,10 @@ import User from "../Models/User.js";
 // GET /api/recipients/profile
 // =====================================================
 
-export const getRecipientProfile = async (req, res) => {
+export const getRecipientProfile = async (
+    req,
+    res
+) => {
     try {
 
         const userId = req.user?.userId;
@@ -19,11 +21,11 @@ export const getRecipientProfile = async (req, res) => {
             });
         }
 
-
-        const recipient = await User.findById(userId).select(
-            "-password -otp -resetPasswordToken -resetPasswordExpires"
-        );
-
+        const recipient =
+            await User.findById(userId)
+                .select(
+                    "-password -otp -resetPasswordToken -resetPasswordExpires"
+                );
 
         if (!recipient) {
             return res.status(404).json({
@@ -32,14 +34,13 @@ export const getRecipientProfile = async (req, res) => {
             });
         }
 
-
         if (recipient.role !== "RECIPIENT") {
             return res.status(403).json({
                 success: false,
-                message: "Only recipients can access this resource"
+                message:
+                    "Only recipients can access this resource"
             });
         }
-
 
         return res.status(200).json({
             success: true,
@@ -55,12 +56,12 @@ export const getRecipientProfile = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve recipient profile",
+            message:
+                "Failed to retrieve recipient profile",
             error: error.message
         });
     }
 };
-
 
 
 // =====================================================
@@ -68,7 +69,10 @@ export const getRecipientProfile = async (req, res) => {
 // PUT /api/recipients/profile
 // =====================================================
 
-export const updateRecipientProfile = async (req, res) => {
+export const updateRecipientProfile = async (
+    req,
+    res
+) => {
     try {
 
         const userId = req.user?.userId;
@@ -80,8 +84,8 @@ export const updateRecipientProfile = async (req, res) => {
             });
         }
 
-
-        const recipient = await User.findById(userId);
+        const recipient =
+            await User.findById(userId);
 
         if (!recipient) {
             return res.status(404).json({
@@ -90,14 +94,13 @@ export const updateRecipientProfile = async (req, res) => {
             });
         }
 
-
         if (recipient.role !== "RECIPIENT") {
             return res.status(403).json({
                 success: false,
-                message: "Only recipients can update this profile"
+                message:
+                    "Only recipients can update this profile"
             });
         }
-
 
         const {
             fullName,
@@ -107,29 +110,14 @@ export const updateRecipientProfile = async (req, res) => {
             longitude
         } = req.body;
 
-
-        // -------------------------------------------------
-        // Update provided fields only
-        // -------------------------------------------------
-
-        if (fullName !== undefined) {
+        if (fullName !== undefined)
             recipient.fullName = fullName;
-        }
 
-
-        if (phoneNumber !== undefined) {
+        if (phoneNumber !== undefined)
             recipient.phoneNumber = phoneNumber;
-        }
 
-
-        if (address !== undefined) {
+        if (address !== undefined)
             recipient.address = address;
-        }
-
-
-        // -------------------------------------------------
-        // Update location
-        // -------------------------------------------------
 
         if (
             latitude !== undefined ||
@@ -140,26 +128,21 @@ export const updateRecipientProfile = async (req, res) => {
                 recipient.location = {};
             }
 
-
-            if (latitude !== undefined) {
+            if (latitude !== undefined)
                 recipient.location.latitude =
                     Number(latitude);
-            }
 
-
-            if (longitude !== undefined) {
+            if (longitude !== undefined)
                 recipient.location.longitude =
                     Number(longitude);
-            }
         }
-
 
         await recipient.save();
 
-
         return res.status(200).json({
             success: true,
-            message: "Recipient profile updated successfully",
+            message:
+                "Recipient profile updated successfully",
             recipient
         });
 
@@ -172,9 +155,9 @@ export const updateRecipientProfile = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Failed to update recipient profile",
+            message:
+                "Failed to update recipient profile",
             error: error.message
         });
     }
 };
- 

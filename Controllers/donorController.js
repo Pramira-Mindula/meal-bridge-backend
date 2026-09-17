@@ -1,4 +1,3 @@
- 
 import User from "../Models/User.js";
 
 
@@ -19,11 +18,10 @@ export const getDonorProfile = async (req, res) => {
             });
         }
 
-
-        const donor = await User.findById(userId).select(
-            "-password -otp -resetPasswordToken -resetPasswordExpires"
-        );
-
+        const donor = await User.findById(userId)
+            .select(
+                "-password -otp -resetPasswordToken -resetPasswordExpires"
+            );
 
         if (!donor) {
             return res.status(404).json({
@@ -32,14 +30,13 @@ export const getDonorProfile = async (req, res) => {
             });
         }
 
-
         if (donor.role !== "DONOR") {
             return res.status(403).json({
                 success: false,
-                message: "Only donors can access this resource"
+                message:
+                    "Only donors can access this resource"
             });
         }
-
 
         return res.status(200).json({
             success: true,
@@ -55,12 +52,12 @@ export const getDonorProfile = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve donor profile",
+            message:
+                "Failed to retrieve donor profile",
             error: error.message
         });
     }
 };
-
 
 
 // =====================================================
@@ -68,7 +65,10 @@ export const getDonorProfile = async (req, res) => {
 // PUT /api/donors/profile
 // =====================================================
 
-export const updateDonorProfile = async (req, res) => {
+export const updateDonorProfile = async (
+    req,
+    res
+) => {
     try {
 
         const userId = req.user?.userId;
@@ -80,8 +80,8 @@ export const updateDonorProfile = async (req, res) => {
             });
         }
 
-
-        const donor = await User.findById(userId);
+        const donor =
+            await User.findById(userId);
 
         if (!donor) {
             return res.status(404).json({
@@ -90,14 +90,13 @@ export const updateDonorProfile = async (req, res) => {
             });
         }
 
-
         if (donor.role !== "DONOR") {
             return res.status(403).json({
                 success: false,
-                message: "Only donors can update this profile"
+                message:
+                    "Only donors can update this profile"
             });
         }
-
 
         const {
             fullName,
@@ -107,29 +106,14 @@ export const updateDonorProfile = async (req, res) => {
             longitude
         } = req.body;
 
-
-        // -------------------------------------------------
-        // UPDATE BASIC INFORMATION
-        // -------------------------------------------------
-
-        if (fullName !== undefined) {
+        if (fullName !== undefined)
             donor.fullName = fullName;
-        }
 
-
-        if (phoneNumber !== undefined) {
+        if (phoneNumber !== undefined)
             donor.phoneNumber = phoneNumber;
-        }
 
-
-        if (address !== undefined) {
+        if (address !== undefined)
             donor.address = address;
-        }
-
-
-        // -------------------------------------------------
-        // UPDATE LOCATION
-        // -------------------------------------------------
 
         if (
             latitude !== undefined ||
@@ -140,26 +124,21 @@ export const updateDonorProfile = async (req, res) => {
                 donor.location = {};
             }
 
-
-            if (latitude !== undefined) {
+            if (latitude !== undefined)
                 donor.location.latitude =
                     Number(latitude);
-            }
 
-
-            if (longitude !== undefined) {
+            if (longitude !== undefined)
                 donor.location.longitude =
                     Number(longitude);
-            }
         }
-
 
         await donor.save();
 
-
         return res.status(200).json({
             success: true,
-            message: "Donor profile updated successfully",
+            message:
+                "Donor profile updated successfully",
             donor
         });
 
@@ -172,9 +151,9 @@ export const updateDonorProfile = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Failed to update donor profile",
+            message:
+                "Failed to update donor profile",
             error: error.message
         });
     }
 };
- 

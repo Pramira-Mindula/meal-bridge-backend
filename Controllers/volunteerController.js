@@ -1,4 +1,3 @@
- 
 import User from "../Models/User.js";
 
 
@@ -7,7 +6,10 @@ import User from "../Models/User.js";
 // GET /api/volunteers/profile
 // =====================================================
 
-export const getVolunteerProfile = async (req, res) => {
+export const getVolunteerProfile = async (
+    req,
+    res
+) => {
     try {
 
         const userId = req.user?.userId;
@@ -19,11 +21,11 @@ export const getVolunteerProfile = async (req, res) => {
             });
         }
 
-
-        const volunteer = await User.findById(userId).select(
-            "-password -otp -resetPasswordToken -resetPasswordExpires"
-        );
-
+        const volunteer =
+            await User.findById(userId)
+                .select(
+                    "-password -otp -resetPasswordToken -resetPasswordExpires"
+                );
 
         if (!volunteer) {
             return res.status(404).json({
@@ -32,14 +34,13 @@ export const getVolunteerProfile = async (req, res) => {
             });
         }
 
-
         if (volunteer.role !== "VOLUNTEER") {
             return res.status(403).json({
                 success: false,
-                message: "Only volunteers can access this resource"
+                message:
+                    "Only volunteers can access this resource"
             });
         }
-
 
         return res.status(200).json({
             success: true,
@@ -55,12 +56,12 @@ export const getVolunteerProfile = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve volunteer profile",
+            message:
+                "Failed to retrieve volunteer profile",
             error: error.message
         });
     }
 };
-
 
 
 // =====================================================
@@ -68,7 +69,10 @@ export const getVolunteerProfile = async (req, res) => {
 // PUT /api/volunteers/profile
 // =====================================================
 
-export const updateVolunteerProfile = async (req, res) => {
+export const updateVolunteerProfile = async (
+    req,
+    res
+) => {
     try {
 
         const userId = req.user?.userId;
@@ -80,8 +84,8 @@ export const updateVolunteerProfile = async (req, res) => {
             });
         }
 
-
-        const volunteer = await User.findById(userId);
+        const volunteer =
+            await User.findById(userId);
 
         if (!volunteer) {
             return res.status(404).json({
@@ -90,14 +94,13 @@ export const updateVolunteerProfile = async (req, res) => {
             });
         }
 
-
         if (volunteer.role !== "VOLUNTEER") {
             return res.status(403).json({
                 success: false,
-                message: "Only volunteers can update this profile"
+                message:
+                    "Only volunteers can update this profile"
             });
         }
-
 
         const {
             fullName,
@@ -107,29 +110,14 @@ export const updateVolunteerProfile = async (req, res) => {
             longitude
         } = req.body;
 
-
-        // -------------------------------------------------
-        // UPDATE BASIC INFORMATION
-        // -------------------------------------------------
-
-        if (fullName !== undefined) {
+        if (fullName !== undefined)
             volunteer.fullName = fullName;
-        }
 
-
-        if (phoneNumber !== undefined) {
+        if (phoneNumber !== undefined)
             volunteer.phoneNumber = phoneNumber;
-        }
 
-
-        if (address !== undefined) {
+        if (address !== undefined)
             volunteer.address = address;
-        }
-
-
-        // -------------------------------------------------
-        // UPDATE LOCATION
-        // -------------------------------------------------
 
         if (
             latitude !== undefined ||
@@ -140,26 +128,21 @@ export const updateVolunteerProfile = async (req, res) => {
                 volunteer.location = {};
             }
 
-
-            if (latitude !== undefined) {
+            if (latitude !== undefined)
                 volunteer.location.latitude =
                     Number(latitude);
-            }
 
-
-            if (longitude !== undefined) {
+            if (longitude !== undefined)
                 volunteer.location.longitude =
                     Number(longitude);
-            }
         }
-
 
         await volunteer.save();
 
-
         return res.status(200).json({
             success: true,
-            message: "Volunteer profile updated successfully",
+            message:
+                "Volunteer profile updated successfully",
             volunteer
         });
 
@@ -172,9 +155,9 @@ export const updateVolunteerProfile = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Failed to update volunteer profile",
+            message:
+                "Failed to update volunteer profile",
             error: error.message
         });
     }
 };
- 
