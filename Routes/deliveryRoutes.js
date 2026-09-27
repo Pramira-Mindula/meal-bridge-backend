@@ -7,6 +7,7 @@ import {
     getMyDeliveries,
     getDeliveryById,
     markDeliveryPickedUp,
+    markDeliveryInTransit,
     markDeliveryDelivered
 } from "../Controllers/deliveryController.js";
 
@@ -73,6 +74,16 @@ router.put(
     "/:id/pickup",
     authMiddleware,
     markDeliveryPickedUp
+);
+
+
+// Mark in transit
+// PUT /api/deliveries/:id/transit
+
+router.put(
+    "/:id/transit",
+    authMiddleware,
+    markDeliveryInTransit
 );
 
 

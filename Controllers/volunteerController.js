@@ -224,10 +224,14 @@ export const getVolunteerSummary = async (
             volunteer: userId,
             status: { $in: ["ACCEPTED", "PICKED_UP", "IN_TRANSIT"] }
         })
-            .populate(
-                "donation",
-                "foodName description category quantity quantityUnit foodImage pickupAddress pickupLocation availableFrom availableUntil donor"
-            )
+            .populate({
+                path: "donation",
+                select: "foodName description category quantity quantityUnit foodImage pickupAddress pickupLocation availableFrom availableUntil donor",
+                populate: {
+                    path: "donor",
+                    select: "fullName phoneNumber email"
+                }
+            })
             .populate(
                 "recipient",
                 "fullName phoneNumber address location"
@@ -304,10 +308,14 @@ export const getVolunteerHistory = async (
             volunteer: userId,
             status: { $in: ["DELIVERED", "CANCELLED"] }
         })
-            .populate(
-                "donation",
-                "foodName description category quantity quantityUnit foodImage pickupAddress pickupLocation availableFrom availableUntil donor"
-            )
+            .populate({
+                path: "donation",
+                select: "foodName description category quantity quantityUnit foodImage pickupAddress pickupLocation availableFrom availableUntil donor",
+                populate: {
+                    path: "donor",
+                    select: "fullName phoneNumber email"
+                }
+            })
             .populate(
                 "recipient",
                 "fullName phoneNumber address location"

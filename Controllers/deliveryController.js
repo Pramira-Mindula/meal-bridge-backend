@@ -199,73 +199,6 @@ export const acceptDelivery = async (
 };
 
 
-// =====================================================
-// CANCEL DELIVERY
-// PUT /api/deliveries/:id/cancel
-// =====================================================
-
-export const cancelDelivery = async (
-    req,
-    res
-) => {
-    try {
-
-        const userId = req.user?.userId;
-
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Unauthorized"
-            });
-        }
-
-        const delivery =
-            await Delivery.findOne({
-                _id: req.params.id,
-                volunteer: userId
-            });
-
-        if (!delivery) {
-            return res.status(404).json({
-                success: false,
-                message:
-                    "Delivery not found or you are not assigned to it"
-            });
-        }
-
-        if (delivery.status !== "ACCEPTED") {
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Only accepted deliveries can be cancelled"
-            });
-        }
-
-        delivery.status = "CANCELLED";
-        delivery.cancelledAt = new Date();
-
-        await delivery.save();
-
-        return res.status(200).json({
-            success: true,
-            message: "Delivery cancelled successfully",
-            delivery
-        });
-
-    } catch (error) {
-
-        console.error(
-            "Cancel Delivery Error:",
-            error
-        );
-
-        return res.status(500).json({
-            success: false,
-            message: "Failed to cancel delivery",
-            error: error.message
-        });
-    }
-};
 
 
 // =====================================================
@@ -427,9 +360,70 @@ export const getDeliveryById = async (
 
 
 // =====================================================
-// PICK UP DELIVERY
-// PUT /api/deliveries/:id/pickup
+// CANCEL DELIVERY
+// PUT /api/delivery/:id/cancel
+// Volunteer can cancel an ACCEPTED or PICKED_UP delivery.
 // =====================================================
+
+export const cancelDelivery = async (req, res) => {
+    try {
+
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized"
+            });
+        }
+
+        const delivery = await Delivery.findOne({
+            _id: req.params.id,
+            volunteer: userId
+        });
+
+        if (!delivery) {
+            return res.status(404).json({
+                success: false,
+                message: "Delivery not found or you are not assigned to it"
+            });
+        }
+
+        const cancellableStatuses = ["ACCEPTED", "PICKED_UP"];
+
+        if (!cancellableStatuses.includes(delivery.status)) {
+            return res.status(400).json({
+                success: false,
+                message: `Only ${cancellableStatuses.join(" or ")} deliveries can be cancelled`
+            });
+        }
+
+        // Release the delivery back to PENDING so another volunteer can accept it
+        delivery.status    = "PENDING";
+        delivery.volunteer = null;
+        delivery.acceptedAt  = null;
+        delivery.pickedUpAt  = null;
+        delivery.cancelledAt = new Date();
+
+        await delivery.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Delivery cancelled. It is now available for other volunteers.",
+            delivery
+        });
+
+    } catch (error) {
+
+        console.error("Cancel Delivery Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to cancel delivery",
+            error: error.message
+        });
+    }
+};
 
 export const markDeliveryPickedUp = async (
     req,
@@ -491,6 +485,74 @@ export const markDeliveryPickedUp = async (
             success: false,
             message:
                 "Failed to update delivery",
+            error: error.message
+        });
+    }
+};
+
+
+// =====================================================
+// MARK IN TRANSIT
+// PUT /api/deliveries/:id/transit
+// =====================================================
+
+export const markDeliveryInTransit = async (
+    req,
+    res
+) => {
+    try {
+
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized"
+            });
+        }
+
+        const delivery =
+            await Delivery.findOne({
+                _id: req.params.id,
+                volunteer: userId
+            });
+
+        if (!delivery) {
+            return res.status(404).json({
+                success: false,
+                message:
+                    "Delivery not found or you are not assigned to it"
+            });
+        }
+
+        if (delivery.status !== "PICKED_UP") {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Food must be picked up before starting transit"
+            });
+        }
+
+        delivery.status = "IN_TRANSIT";
+
+        await delivery.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Delivery is now in transit",
+            delivery
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Mark In Transit Error:",
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update delivery",
             error: error.message
         });
     }
