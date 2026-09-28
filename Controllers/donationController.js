@@ -15,11 +15,7 @@ import {
 export const createDonation = async (req, res) => {
     try {
 
-        // -------------------------------------------------
-        // Check authenticated user
-        // -------------------------------------------------
-
-       const userId = req.user?.userId;
+        const userId = req.user?.userId;
 
         if (!userId) {
             return res.status(401).json({
@@ -27,11 +23,6 @@ export const createDonation = async (req, res) => {
                 message: "Unauthorized"
             });
         }
-
-
-        // -------------------------------------------------
-        // Check donor role
-        // -------------------------------------------------
 
         const user = await User.findById(userId);
 
@@ -49,11 +40,6 @@ export const createDonation = async (req, res) => {
             });
         }
 
-
-        // -------------------------------------------------
-        // Get form data
-        // -------------------------------------------------
-
         const {
             foodName,
             description,
@@ -67,19 +53,18 @@ export const createDonation = async (req, res) => {
             availableUntil
         } = req.body;
 
-
-        // -------------------------------------------------
-        // Validate required fields
-        // -------------------------------------------------
+        // ==========================================
+        // VALIDATION
+        // ==========================================
 
         if (
             !foodName ||
             !category ||
-            !quantity ||
+            quantity === undefined ||
             !quantityUnit ||
             !pickupAddress ||
-            !latitude ||
-            !longitude ||
+            latitude === undefined ||
+            longitude === undefined ||
             !availableFrom ||
             !availableUntil
         ) {
@@ -89,10 +74,26 @@ export const createDonation = async (req, res) => {
             });
         }
 
+        const numericQuantity = Number(quantity);
+        const numericLatitude = Number(latitude);
+        const numericLongitude = Number(longitude);
 
-        // -------------------------------------------------
-        // Validate dates
-        // -------------------------------------------------
+        if (!Number.isFinite(numericQuantity) || numericQuantity < 1) {
+            return res.status(400).json({
+                success: false,
+                message: "Quantity must be greater than 0"
+            });
+        }
+
+        if (
+            !Number.isFinite(numericLatitude) ||
+            !Number.isFinite(numericLongitude)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid pickup location"
+            });
+        }
 
         const fromDate = new Date(availableFrom);
         const untilDate = new Date(availableUntil);
@@ -114,23 +115,20 @@ export const createDonation = async (req, res) => {
             });
         }
 
-
-        // -------------------------------------------------
-        // Food image
-        // -------------------------------------------------
+        // ==========================================
+        // IMAGE
+        // ==========================================
 
         let foodImage = {
             url: null,
             publicId: null
         };
 
-
         if (req.file) {
-
-           const uploadedImage = await uploadToCloudinary(
-    req.file.buffer,
-    "mealbridge/donations"
-);
+            const uploadedImage = await uploadToCloudinary(
+                req.file.buffer,
+                "mealbridge/donations"
+            );
 
             foodImage = {
                 url: uploadedImage.url,
@@ -138,43 +136,27 @@ export const createDonation = async (req, res) => {
             };
         }
 
-
-        // -------------------------------------------------
-        // Create donation
-        // -------------------------------------------------
+        // ==========================================
+        // CREATE
+        // ==========================================
 
         const donation = await Donation.create({
-
             donor: userId,
-
             foodName,
             description,
-
             category,
-
-            quantity: Number(quantity),
-
+            quantity: numericQuantity,
             quantityUnit,
-
             foodImage,
-
             pickupAddress,
-
             pickupLocation: {
-                latitude: Number(latitude),
-                longitude: Number(longitude)
+                latitude: numericLatitude,
+                longitude: numericLongitude
             },
-
             availableFrom: fromDate,
             availableUntil: untilDate,
-
             status: "AVAILABLE"
         });
-
-
-        // -------------------------------------------------
-        // Response
-        // -------------------------------------------------
 
         return res.status(201).json({
             success: true,
@@ -195,20 +177,21 @@ export const createDonation = async (req, res) => {
 };
 
 
-
 // =====================================================
-// GET ALL AVAILABLE DONATIONS
+// GET AVAILABLE DONATIONS
 // GET /api/donations
 // =====================================================
 
 export const getAllDonations = async (req, res) => {
     try {
 
+        const now = new Date();
+
+        // Automatically exclude expired donations.
         const donations = await Donation.find({
             status: "AVAILABLE",
-            availableUntil: {
-                $gt: new Date()
-            }
+            availableFrom: { $lte: now },
+            availableUntil: { $gt: now }
         })
             .populate(
                 "donor",
@@ -217,7 +200,6 @@ export const getAllDonations = async (req, res) => {
             .sort({
                 createdAt: -1
             });
-
 
         return res.status(200).json({
             success: true,
@@ -238,7 +220,6 @@ export const getAllDonations = async (req, res) => {
 };
 
 
-
 // =====================================================
 // GET MY DONATIONS
 // GET /api/donations/my
@@ -247,7 +228,7 @@ export const getAllDonations = async (req, res) => {
 export const getMyDonations = async (req, res) => {
     try {
 
-      const userId = req.user?.userId;
+        const userId = req.user?.userId;
 
         if (!userId) {
             return res.status(401).json({
@@ -255,7 +236,6 @@ export const getMyDonations = async (req, res) => {
                 message: "Unauthorized"
             });
         }
-
 
         const donations = await Donation.find({
             donor: userId
@@ -267,7 +247,6 @@ export const getMyDonations = async (req, res) => {
             .sort({
                 createdAt: -1
             });
-
 
         return res.status(200).json({
             success: true,
@@ -288,9 +267,8 @@ export const getMyDonations = async (req, res) => {
 };
 
 
-
 // =====================================================
-// GET SINGLE DONATION
+// GET DONATION BY ID
 // GET /api/donations/:id
 // =====================================================
 
@@ -298,7 +276,6 @@ export const getDonationById = async (req, res) => {
     try {
 
         const { id } = req.params;
-
 
         const donation = await Donation.findById(id)
             .populate(
@@ -310,14 +287,12 @@ export const getDonationById = async (req, res) => {
                 "fullName email phoneNumber"
             );
 
-
         if (!donation) {
             return res.status(404).json({
                 success: false,
                 message: "Donation not found"
             });
         }
-
 
         return res.status(200).json({
             success: true,
@@ -337,7 +312,6 @@ export const getDonationById = async (req, res) => {
 };
 
 
-
 // =====================================================
 // UPDATE DONATION
 // PUT /api/donations/:id
@@ -355,11 +329,7 @@ export const updateDonation = async (req, res) => {
             });
         }
 
-
-        const { id } = req.params;
-
-
-        const donation = await Donation.findById(id);
+        const donation = await Donation.findById(req.params.id);
 
         if (!donation) {
             return res.status(404).json({
@@ -368,34 +338,23 @@ export const updateDonation = async (req, res) => {
             });
         }
 
-
-        // -------------------------------------------------
-        // Only owner can update
-        // -------------------------------------------------
-
-        if (donation.donor.toString() !== userId.toString()) {
+        if (
+            donation.donor.toString() !==
+            userId.toString()
+        ) {
             return res.status(403).json({
                 success: false,
                 message: "You can only update your own donations"
             });
         }
 
-
-        // -------------------------------------------------
-        // Don't allow updating claimed/completed donations
-        // -------------------------------------------------
-
-        if (
-            donation.status === "CLAIMED" ||
-            donation.status === "COMPLETED" ||
-            donation.status === "CANCELLED"
-        ) {
+        // Once claimed, donor should not modify the donation.
+        if (donation.status !== "AVAILABLE") {
             return res.status(400).json({
                 success: false,
-                message: "This donation can no longer be updated"
+                message: "Only available donations can be updated"
             });
         }
-
 
         const {
             foodName,
@@ -410,11 +369,6 @@ export const updateDonation = async (req, res) => {
             availableUntil
         } = req.body;
 
-
-        // -------------------------------------------------
-        // Update only provided fields
-        // -------------------------------------------------
-
         if (foodName !== undefined)
             donation.foodName = foodName;
 
@@ -424,8 +378,21 @@ export const updateDonation = async (req, res) => {
         if (category !== undefined)
             donation.category = category;
 
-        if (quantity !== undefined)
-            donation.quantity = Number(quantity);
+        if (quantity !== undefined) {
+            const numericQuantity = Number(quantity);
+
+            if (
+                !Number.isFinite(numericQuantity) ||
+                numericQuantity < 1
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Quantity must be greater than 0"
+                });
+            }
+
+            donation.quantity = numericQuantity;
+        }
 
         if (quantityUnit !== undefined)
             donation.quantityUnit = quantityUnit;
@@ -433,41 +400,69 @@ export const updateDonation = async (req, res) => {
         if (pickupAddress !== undefined)
             donation.pickupAddress = pickupAddress;
 
-        if (latitude !== undefined)
-            donation.pickupLocation.latitude = Number(latitude);
+        if (latitude !== undefined) {
+            donation.pickupLocation.latitude =
+                Number(latitude);
+        }
 
-        if (longitude !== undefined)
-            donation.pickupLocation.longitude = Number(longitude);
+        if (longitude !== undefined) {
+            donation.pickupLocation.longitude =
+                Number(longitude);
+        }
 
+        if (availableFrom !== undefined) {
+            const date = new Date(availableFrom);
 
-        if (availableFrom !== undefined)
-            donation.availableFrom = new Date(availableFrom);
+            if (isNaN(date.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid availableFrom date"
+                });
+            }
 
-        if (availableUntil !== undefined)
-            donation.availableUntil = new Date(availableUntil);
+            donation.availableFrom = date;
+        }
 
+        if (availableUntil !== undefined) {
+            const date = new Date(availableUntil);
 
-        // -------------------------------------------------
-        // New image
-        // -------------------------------------------------
+            if (isNaN(date.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid availableUntil date"
+                });
+            }
+
+            donation.availableUntil = date;
+        }
+
+        if (
+            donation.availableUntil <=
+            donation.availableFrom
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "availableUntil must be after availableFrom"
+            });
+        }
+
+        // ==========================================
+        // REPLACE IMAGE
+        // ==========================================
 
         if (req.file) {
 
-            // Delete old Cloudinary image
             if (donation.foodImage?.publicId) {
-
                 await deleteFromCloudinary(
                     donation.foodImage.publicId
                 );
             }
 
-
-            // Upload new image
-          const uploadedImage = await uploadToCloudinary(
-    req.file.buffer,
-    "mealbridge/donations"
-);
-
+            const uploadedImage =
+                await uploadToCloudinary(
+                    req.file.buffer,
+                    "mealbridge/donations"
+                );
 
             donation.foodImage = {
                 url: uploadedImage.url,
@@ -475,9 +470,7 @@ export const updateDonation = async (req, res) => {
             };
         }
 
-
         await donation.save();
-
 
         return res.status(200).json({
             success: true,
@@ -498,7 +491,6 @@ export const updateDonation = async (req, res) => {
 };
 
 
-
 // =====================================================
 // CANCEL DONATION
 // PUT /api/donations/:id/cancel
@@ -507,7 +499,7 @@ export const updateDonation = async (req, res) => {
 export const cancelDonation = async (req, res) => {
     try {
 
-      const userId = req.user?.userId;
+        const userId = req.user?.userId;
 
         if (!userId) {
             return res.status(401).json({
@@ -516,11 +508,7 @@ export const cancelDonation = async (req, res) => {
             });
         }
 
-
-        const { id } = req.params;
-
-
-        const donation = await Donation.findById(id);
+        const donation = await Donation.findById(req.params.id);
 
         if (!donation) {
             return res.status(404).json({
@@ -529,38 +517,26 @@ export const cancelDonation = async (req, res) => {
             });
         }
 
-
-        // -------------------------------------------------
-        // Check owner
-        // -------------------------------------------------
-
-        if (donation.donor.toString() !== userId.toString()) {
+        if (
+            donation.donor.toString() !==
+            userId.toString()
+        ) {
             return res.status(403).json({
                 success: false,
                 message: "You can only cancel your own donations"
             });
         }
 
-
-        // -------------------------------------------------
-        // Check status
-        // -------------------------------------------------
-
-        if (
-            donation.status === "COMPLETED" ||
-            donation.status === "CANCELLED"
-        ) {
+        if (donation.status !== "AVAILABLE") {
             return res.status(400).json({
                 success: false,
-                message: "This donation cannot be cancelled"
+                message: "Only available donations can be cancelled"
             });
         }
-
 
         donation.status = "CANCELLED";
 
         await donation.save();
-
 
         return res.status(200).json({
             success: true,

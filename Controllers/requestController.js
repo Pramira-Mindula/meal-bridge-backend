@@ -3,7 +3,12 @@ import Donation from "../Models/Donation.js";
 import User from "../Models/User.js";
 import Delivery from "../Models/Delivary.js";
 
- 
+
+// =====================================================
+// CREATE FOOD REQUEST
+// POST /api/food-requests
+// =====================================================
+
 export const createFoodRequest = async (req, res) => {
     try {
 
@@ -16,8 +21,6 @@ export const createFoodRequest = async (req, res) => {
             });
         }
 
-
-       
         const user = await User.findById(userId);
 
         if (!user) {
@@ -27,7 +30,6 @@ export const createFoodRequest = async (req, res) => {
             });
         }
 
-
         if (user.role !== "RECIPIENT") {
             return res.status(403).json({
                 success: false,
@@ -35,25 +37,51 @@ export const createFoodRequest = async (req, res) => {
             });
         }
 
- 
         const {
             donationId,
             quantityRequested,
             message
         } = req.body;
 
-
-        if (!donationId || !quantityRequested) {
+        if (!donationId || quantityRequested === undefined) {
             return res.status(400).json({
                 success: false,
                 message: "Donation ID and quantity are required"
             });
         }
 
- 
-        const donation = await Donation.findById(
-            donationId
-        );
+        // ==========================================
+        // RECIPIENT DELIVERY INFORMATION
+        // ==========================================
+
+        if (
+            !user.address ||
+            user.location?.latitude === undefined ||
+            user.location?.longitude === undefined
+        ) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Please complete your address and location before requesting food"
+            });
+        }
+
+        const requestedQuantity =
+            Number(quantityRequested);
+
+        if (
+            !Number.isInteger(requestedQuantity) ||
+            requestedQuantity < 1
+        ) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Quantity must be a positive whole number"
+            });
+        }
+
+        const donation =
+            await Donation.findById(donationId);
 
         if (!donation) {
             return res.status(404).json({
@@ -62,51 +90,51 @@ export const createFoodRequest = async (req, res) => {
             });
         }
 
- 
+        // ==========================================
+        // DONATION AVAILABILITY
+        // ==========================================
+
         if (donation.status !== "AVAILABLE") {
             return res.status(400).json({
                 success: false,
-                message: "This donation is no longer available"
+                message:
+                    "This donation is no longer available"
             });
         }
 
+        const now = new Date();
 
-     
+        if (donation.availableFrom > now) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "This donation is not available yet"
+            });
+        }
+
+        if (donation.availableUntil <= now) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "This donation has expired"
+            });
+        }
+
         if (
-            donation.availableUntil &&
-            new Date(donation.availableUntil) <= new Date()
+            requestedQuantity >
+            donation.quantity
         ) {
             return res.status(400).json({
                 success: false,
-                message: "This donation has expired"
+                message:
+                    "Requested quantity exceeds available quantity"
             });
         }
 
- 
+        // ==========================================
+        // DUPLICATE PENDING REQUEST
+        // ==========================================
 
-        const requestedQuantity = Number(
-            quantityRequested
-        );
-
-        if (
-            !Number.isInteger(requestedQuantity) ||
-            requestedQuantity < 1
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: "Quantity must be a positive whole number"
-            });
-        }
-
-
-        if (requestedQuantity > donation.quantity) {
-            return res.status(400).json({
-                success: false,
-                message: "Requested quantity exceeds available quantity"
-            });
-        }
-
- 
         const existingRequest =
             await FoodRequest.findOne({
                 recipient: userId,
@@ -114,34 +142,33 @@ export const createFoodRequest = async (req, res) => {
                 status: "PENDING"
             });
 
-
         if (existingRequest) {
             return res.status(400).json({
                 success: false,
-                message: "You already have a pending request for this donation"
+                message:
+                    "You already have a pending request for this donation"
             });
         }
 
- 
-        const foodRequest = await FoodRequest.create({
+        // ==========================================
+        // CREATE REQUEST
+        // ==========================================
 
-            recipient: userId,
+        const foodRequest =
+            await FoodRequest.create({
+                recipient: userId,
+                donation: donationId,
+                quantityRequested:
+                    requestedQuantity,
+                message,
+                status: "PENDING"
+            });
 
-            donation: donationId,
-
-            quantityRequested:
-                requestedQuantity,
-
-            message,
-
-            status: "PENDING"
-        });
-
- 
         await foodRequest.populate([
             {
                 path: "recipient",
-                select: "fullName email phoneNumber profileImage"
+                select:
+                    "fullName email phoneNumber address location profileImage"
             },
             {
                 path: "donation",
@@ -150,10 +177,10 @@ export const createFoodRequest = async (req, res) => {
             }
         ]);
 
-
         return res.status(201).json({
             success: true,
-            message: "Food request created successfully",
+            message:
+                "Food request created successfully",
             foodRequest
         });
 
@@ -166,17 +193,23 @@ export const createFoodRequest = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Failed to create food request",
+            message:
+                "Failed to create food request",
             error: error.message
         });
     }
 };
 
 
+// =====================================================
+// GET MY FOOD REQUESTS
+// GET /api/food-requests/my
+// =====================================================
 
- 
-
-export const getMyFoodRequests = async (req, res) => {
+export const getMyFoodRequests = async (
+    req,
+    res
+) => {
     try {
 
         const userId = req.user?.userId;
@@ -188,22 +221,17 @@ export const getMyFoodRequests = async (req, res) => {
             });
         }
 
-
-        const requests = await FoodRequest.find({
-            recipient: userId
-        })
-            .populate(
-                "donation",
-                "foodName description category quantity quantityUnit foodImage pickupAddress pickupLocation status"
-            )
-            .populate(
-                "recipient",
-                "fullName email phoneNumber"
-            )
-            .sort({
-                createdAt: -1
-            });
-
+        const requests =
+            await FoodRequest.find({
+                recipient: userId
+            })
+                .populate(
+                    "donation",
+                    "foodName description category quantity quantityUnit foodImage pickupAddress pickupLocation status"
+                )
+                .sort({
+                    createdAt: -1
+                });
 
         return res.status(200).json({
             success: true,
@@ -220,16 +248,23 @@ export const getMyFoodRequests = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve your requests",
+            message:
+                "Failed to retrieve your requests",
             error: error.message
         });
     }
 };
 
 
+// =====================================================
+// GET REQUEST BY ID
+// GET /api/food-requests/:id
+// =====================================================
 
- 
-export const getFoodRequestById = async (req, res) => {
+export const getFoodRequestById = async (
+    req,
+    res
+) => {
     try {
 
         const userId = req.user?.userId;
@@ -241,48 +276,42 @@ export const getFoodRequestById = async (req, res) => {
             });
         }
 
-
-        const { id } = req.params;
-
-
-        const request = await FoodRequest.findById(id)
-            .populate(
-                "recipient",
-                "fullName email phoneNumber profileImage"
+        const request =
+            await FoodRequest.findById(
+                req.params.id
             )
-            .populate(
-                "donation",
-                "foodName description category quantity quantityUnit foodImage pickupAddress pickupLocation status donor"
-            );
-
+                .populate(
+                    "recipient",
+                    "fullName email phoneNumber profileImage address location"
+                )
+                .populate(
+                    "donation",
+                    "foodName description category quantity quantityUnit foodImage pickupAddress pickupLocation status donor"
+                );
 
         if (!request) {
             return res.status(404).json({
                 success: false,
-                message: "Food request not found"
+                message:
+                    "Food request not found"
             });
         }
 
-
-     
-
         const isRecipient =
-            request.recipient._id.toString() ===
+            request.recipient?._id.toString() ===
             userId.toString();
 
-
-        const donationOwner =
+        const isDonor =
             request.donation?.donor?.toString() ===
             userId.toString();
 
-
-        if (!isRecipient && !donationOwner) {
+        if (!isRecipient && !isDonor) {
             return res.status(403).json({
                 success: false,
-                message: "You are not authorized to view this request"
+                message:
+                    "You are not authorized to view this request"
             });
         }
-
 
         return res.status(200).json({
             success: true,
@@ -298,15 +327,18 @@ export const getFoodRequestById = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve food request",
+            message:
+                "Failed to retrieve food request",
             error: error.message
         });
     }
 };
 
 
-
- 
+// =====================================================
+// GET REQUESTS FOR MY DONATIONS
+// GET /api/food-requests/donor
+// =====================================================
 
 export const getRequestsForMyDonations = async (
     req,
@@ -323,8 +355,8 @@ export const getRequestsForMyDonations = async (
             });
         }
 
-
-        const user = await User.findById(userId);
+        const user =
+            await User.findById(userId);
 
         if (!user) {
             return res.status(404).json({
@@ -333,28 +365,23 @@ export const getRequestsForMyDonations = async (
             });
         }
 
-
         if (user.role !== "DONOR") {
             return res.status(403).json({
                 success: false,
-                message: "Only donors can view donation requests"
+                message:
+                    "Only donors can view donation requests"
             });
         }
 
- 
-
-        const donations = await Donation.find({
-            donor: userId
-        }).select("_id");
-
+        const donations =
+            await Donation.find({
+                donor: userId
+            }).select("_id");
 
         const donationIds =
             donations.map(
                 donation => donation._id
             );
-
-
-      
 
         const requests =
             await FoodRequest.find({
@@ -364,7 +391,7 @@ export const getRequestsForMyDonations = async (
             })
                 .populate(
                     "recipient",
-                    "fullName email phoneNumber profileImage"
+                    "fullName email phoneNumber profileImage address location"
                 )
                 .populate(
                     "donation",
@@ -373,7 +400,6 @@ export const getRequestsForMyDonations = async (
                 .sort({
                     createdAt: -1
                 });
-
 
         return res.status(200).json({
             success: true,
@@ -390,15 +416,18 @@ export const getRequestsForMyDonations = async (
 
         return res.status(500).json({
             success: false,
-            message: "Failed to retrieve donation requests",
+            message:
+                "Failed to retrieve donation requests",
             error: error.message
         });
     }
 };
 
 
-
- 
+// =====================================================
+// ACCEPT FOOD REQUEST
+// PUT /api/food-requests/:id/accept
+// =====================================================
 
 export const acceptFoodRequest = async (
     req,
@@ -415,29 +444,22 @@ export const acceptFoodRequest = async (
             });
         }
 
-
-        const { id } = req.params;
-
-
-        // =====================================================
-        // GET FOOD REQUEST
-        // =====================================================
-
-        const request = await FoodRequest.findById(id)
-            .populate("donation");
-
+        const request =
+            await FoodRequest.findById(
+                req.params.id
+            ).populate("donation");
 
         if (!request) {
             return res.status(404).json({
                 success: false,
-                message: "Food request not found"
+                message:
+                    "Food request not found"
             });
         }
 
-
-        // =====================================================
-        // CHECK DONATION OWNER
-        // =====================================================
+        // ==========================================
+        // DONOR OWNERSHIP
+        // ==========================================
 
         if (
             request.donation.donor.toString() !==
@@ -450,10 +472,9 @@ export const acceptFoodRequest = async (
             });
         }
 
-
-        // =====================================================
-        // CHECK REQUEST STATUS
-        // =====================================================
+        // ==========================================
+        // REQUEST STATUS
+        // ==========================================
 
         if (request.status !== "PENDING") {
             return res.status(400).json({
@@ -463,12 +484,14 @@ export const acceptFoodRequest = async (
             });
         }
 
+        // ==========================================
+        // DONATION STATUS
+        // ==========================================
 
-        // =====================================================
-        // CHECK DONATION STATUS
-        // =====================================================
-
-        if (request.donation.status !== "AVAILABLE") {
+        if (
+            request.donation.status !==
+            "AVAILABLE"
+        ) {
             return res.status(400).json({
                 success: false,
                 message:
@@ -476,10 +499,9 @@ export const acceptFoodRequest = async (
             });
         }
 
-
-        // =====================================================
-        // CHECK QUANTITY
-        // =====================================================
+        // ==========================================
+        // QUANTITY
+        // ==========================================
 
         if (
             request.quantityRequested >
@@ -492,15 +514,14 @@ export const acceptFoodRequest = async (
             });
         }
 
+        // ==========================================
+        // RECIPIENT
+        // ==========================================
 
-        // =====================================================
-        // GET RECIPIENT
-        // =====================================================
-
-        const recipient = await User.findById(
-            request.recipient
-        );
-
+        const recipient =
+            await User.findById(
+                request.recipient
+            );
 
         if (!recipient) {
             return res.status(404).json({
@@ -508,11 +529,6 @@ export const acceptFoodRequest = async (
                 message: "Recipient not found"
             });
         }
-
-
-        // =====================================================
-        // CHECK RECIPIENT DELIVERY INFORMATION
-        // =====================================================
 
         if (
             !recipient.address ||
@@ -526,99 +542,35 @@ export const acceptFoodRequest = async (
             });
         }
 
-
-        // =====================================================
-        // ACCEPT FOOD REQUEST
-        // =====================================================
+        // ==========================================
+        // ACCEPT REQUEST
+        // ==========================================
 
         request.status = "ACCEPTED";
         request.respondedAt = new Date();
 
         await request.save();
 
-
-        // =====================================================
-        // UPDATE DONATION
-        // =====================================================
+        // ==========================================
+        // CLAIM DONATION
+        // ==========================================
 
         request.donation.status = "CLAIMED";
-
         request.donation.claimedBy =
             request.recipient;
-
         request.donation.claimedAt =
             new Date();
 
         await request.donation.save();
 
-
-        // =====================================================
-        // CREATE DELIVERY
-        // =====================================================
-
-        const existingDelivery =
-            await Delivery.findOne({
-                foodRequest: request._id
-            });
-
-
-        if (!existingDelivery) {
-
-            await Delivery.create({
-
-                foodRequest: request._id,
-
-                donation: request.donation._id,
-
-                recipient: request.recipient,
-
-                volunteer: null,
-
-
-                // -----------------------------
-                // PICKUP
-                // -----------------------------
-
-                pickupAddress:
-                    request.donation.pickupAddress,
-
-                pickupLocation: {
-                    latitude:
-                        request.donation.pickupLocation.latitude,
-
-                    longitude:
-                        request.donation.pickupLocation.longitude
-                },
-
-
-                // -----------------------------
-                // DELIVERY
-                // -----------------------------
-
-                deliveryAddress:
-                    recipient.address,
-
-                deliveryLocation: {
-                    latitude:
-                        recipient.location.latitude,
-
-                    longitude:
-                        recipient.location.longitude
-                },
-
-
-                status: "PENDING"
-            });
-        }
-
-
-        // =====================================================
+        // ==========================================
         // REJECT OTHER PENDING REQUESTS
-        // =====================================================
+        // ==========================================
 
         await FoodRequest.updateMany(
             {
-                donation: request.donation._id,
+                donation:
+                    request.donation._id,
 
                 _id: {
                     $ne: request._id
@@ -634,10 +586,64 @@ export const acceptFoodRequest = async (
             }
         );
 
+        // ==========================================
+        // CREATE DELIVERY
+        // ==========================================
 
-        // =====================================================
-        // POPULATE RESPONSE
-        // =====================================================
+        let delivery =
+            await Delivery.findOne({
+                foodRequest:
+                    request._id
+            });
+
+        if (!delivery) {
+
+            delivery =
+                await Delivery.create({
+
+                    foodRequest:
+                        request._id,
+
+                    donation:
+                        request.donation._id,
+
+                    recipient:
+                        request.recipient,
+
+                    volunteer: null,
+
+                    pickupAddress:
+                        request.donation
+                            .pickupAddress,
+
+                    pickupLocation: {
+                        latitude:
+                            request.donation
+                                .pickupLocation
+                                .latitude,
+
+                        longitude:
+                            request.donation
+                                .pickupLocation
+                                .longitude
+                    },
+
+                    deliveryAddress:
+                        recipient.address,
+
+                    deliveryLocation: {
+                        latitude:
+                            recipient.location
+                                .latitude,
+
+                        longitude:
+                            recipient.location
+                                .longitude
+                    },
+
+                    status: "PENDING"
+                });
+        }
 
         await request.populate([
             {
@@ -645,7 +651,6 @@ export const acceptFoodRequest = async (
                 select:
                     "fullName email phoneNumber address location"
             },
-
             {
                 path: "donation",
                 select:
@@ -653,18 +658,13 @@ export const acceptFoodRequest = async (
             }
         ]);
 
-
-        // =====================================================
-        // RESPONSE
-        // =====================================================
-
         return res.status(200).json({
             success: true,
             message:
-                "Food request accepted successfully",
-            request
+                "Food request accepted successfully. Delivery is now available for volunteers.",
+            request,
+            delivery
         });
-
 
     } catch (error) {
 
@@ -672,7 +672,6 @@ export const acceptFoodRequest = async (
             "Accept Food Request Error:",
             error
         );
-
 
         return res.status(500).json({
             success: false,
@@ -684,7 +683,11 @@ export const acceptFoodRequest = async (
 };
 
 
- 
+// =====================================================
+// REJECT FOOD REQUEST
+// PUT /api/food-requests/:id/reject
+// =====================================================
+
 export const rejectFoodRequest = async (
     req,
     res
@@ -700,52 +703,47 @@ export const rejectFoodRequest = async (
             });
         }
 
-
-        const { id } = req.params;
-
-
         const request =
-            await FoodRequest.findById(id)
-                .populate("donation");
-
+            await FoodRequest.findById(
+                req.params.id
+            ).populate("donation");
 
         if (!request) {
             return res.status(404).json({
                 success: false,
-                message: "Food request not found"
+                message:
+                    "Food request not found"
             });
         }
 
-
-     
         if (
             request.donation.donor.toString() !==
             userId.toString()
         ) {
             return res.status(403).json({
                 success: false,
-                message: "You can only manage requests for your donations"
+                message:
+                    "You can only manage requests for your donations"
             });
         }
-
 
         if (request.status !== "PENDING") {
             return res.status(400).json({
                 success: false,
-                message: "Only pending requests can be rejected"
+                message:
+                    "Only pending requests can be rejected"
             });
         }
-
 
         request.status = "REJECTED";
         request.respondedAt = new Date();
 
         await request.save();
 
-
         return res.status(200).json({
             success: true,
-            message: "Food request rejected successfully",
+            message:
+                "Food request rejected successfully",
             request
         });
 
@@ -758,14 +756,19 @@ export const rejectFoodRequest = async (
 
         return res.status(500).json({
             success: false,
-            message: "Failed to reject food request",
+            message:
+                "Failed to reject food request",
             error: error.message
         });
     }
 };
 
 
- 
+// =====================================================
+// CANCEL FOOD REQUEST
+// PUT /api/food-requests/:id/cancel
+// =====================================================
+
 export const cancelFoodRequest = async (
     req,
     res
@@ -781,22 +784,18 @@ export const cancelFoodRequest = async (
             });
         }
 
-
-        const { id } = req.params;
-
-
         const request =
-            await FoodRequest.findById(id);
-
+            await FoodRequest.findById(
+                req.params.id
+            );
 
         if (!request) {
             return res.status(404).json({
                 success: false,
-                message: "Food request not found"
+                message:
+                    "Food request not found"
             });
         }
-
- 
 
         if (
             request.recipient.toString() !==
@@ -804,27 +803,28 @@ export const cancelFoodRequest = async (
         ) {
             return res.status(403).json({
                 success: false,
-                message: "You can only cancel your own requests"
+                message:
+                    "You can only cancel your own requests"
             });
         }
-
 
         if (request.status !== "PENDING") {
             return res.status(400).json({
                 success: false,
-                message: "Only pending requests can be cancelled"
+                message:
+                    "Only pending requests can be cancelled"
             });
         }
 
-
         request.status = "CANCELLED";
+        request.respondedAt = new Date();
 
         await request.save();
 
-
         return res.status(200).json({
             success: true,
-            message: "Food request cancelled successfully",
+            message:
+                "Food request cancelled successfully",
             request
         });
 
@@ -837,7 +837,8 @@ export const cancelFoodRequest = async (
 
         return res.status(500).json({
             success: false,
-            message: "Failed to cancel food request",
+            message:
+                "Failed to cancel food request",
             error: error.message
         });
     }
