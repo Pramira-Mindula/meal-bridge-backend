@@ -3,7 +3,9 @@ import express from "express";
 
 import {
     getVolunteerProfile,
-    updateVolunteerProfile
+    updateVolunteerProfile,
+    getVolunteerSummary,
+    getVolunteerHistory
 } from "../Controllers/volunteerController.js";
 
 import authMiddleware from "../Middlewares/authMiddleware.js";
@@ -29,6 +31,30 @@ router.put(
     "/profile",
     authMiddleware,
     updateVolunteerProfile
+);
+
+
+// =====================================================
+// VOLUNTEER SUMMARY
+// GET /api/volunteers/summary
+// =====================================================
+
+router.get(
+    "/summary",
+    authMiddleware,
+    getVolunteerSummary
+);
+
+
+// =====================================================
+// VOLUNTEER DELIVERY HISTORY
+// GET /api/volunteers/history
+// =====================================================
+
+router.get(
+    "/history",
+    authMiddleware,
+    getVolunteerHistory
 );
 
 
