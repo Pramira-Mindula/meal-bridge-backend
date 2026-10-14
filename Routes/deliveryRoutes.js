@@ -3,6 +3,7 @@ import express from "express";
 import {
     getAvailableDeliveries,
     acceptDelivery,
+    cancelDelivery,
     getMyDeliveries,
     getDeliveryById,
     markDeliveryPickedUp,
@@ -53,6 +54,16 @@ router.put(
     "/:id/accept",
     authMiddleware,
     acceptDelivery
+);
+
+
+// Cancel an accepted delivery
+// PUT /api/deliveries/:id/cancel
+
+router.put(
+    "/:id/cancel",
+    authMiddleware,
+    cancelDelivery
 );
 
 
