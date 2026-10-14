@@ -139,6 +139,21 @@ npm run dev
 
 The application will then be available through the local development URL shown in the terminal.
 
+## Backend API and MongoDB
+
+The backend runs on `http://localhost:5003` by default and connects to MongoDB before accepting requests. Configure these environment variables in the backend `.env` file:
+
+```text
+MONGO_URI=<your MongoDB connection string>
+JWT_SECRET=<a long random secret>
+JWT_EXPIRES_IN=7d
+PORT=5003
+```
+
+Start the backend from this directory with `npm start`. A successful startup logs the MongoDB connection and server address. If `MONGO_URI` is missing or MongoDB cannot be reached, the server will not start.
+
+Frontend form submissions should call the backend API rather than writing directly to MongoDB. Registration and login are available at `POST /api/auth/register` and `POST /api/auth/login`. Authenticated donation creation uses `POST /api/donations`; food requests use `POST /api/foodrequests`. Send the access token returned by login as `Authorization: Bearer <token>`. Requests without images can use JSON. Image uploads use `multipart/form-data` with file fields `profileImage` or `foodImage`; donation pickup coordinates can be sent either as `latitude` and `longitude` or as a `pickupLocation` object.
+
 ##  Recipient User Flow
 
 ```text

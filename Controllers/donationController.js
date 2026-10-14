@@ -61,12 +61,25 @@ export const createDonation = async (req, res) => {
             quantity,
             quantityUnit,
             pickupAddress,
-            latitude,
-            longitude,
             availableFrom,
             availableUntil
         } = req.body;
 
+        let submittedLocation = req.body.pickupLocation;
+        if (typeof submittedLocation === "string") {
+            try {
+                submittedLocation = JSON.parse(submittedLocation);
+            } catch (error) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid pickupLocation format"
+                });
+            }
+        }
+
+        const latitude = req.body.latitude ?? submittedLocation?.latitude;
+        const longitude = req.body.longitude ?? submittedLocation?.longitude;
+        const numericQuantity = Number(quantity);
 
         // -------------------------------------------------
         // Validate required fields
@@ -75,13 +88,23 @@ export const createDonation = async (req, res) => {
         if (
             !foodName ||
             !category ||
-            !quantity ||
+            quantity === undefined ||
+            quantity === null ||
+            quantity === "" ||
             !quantityUnit ||
             !pickupAddress ||
-            !latitude ||
-            !longitude ||
+            latitude === undefined ||
+            latitude === null ||
+            latitude === "" ||
+            longitude === undefined ||
+            longitude === null ||
+            longitude === "" ||
             !availableFrom ||
-            !availableUntil
+            !availableUntil ||
+            !Number.isFinite(numericQuantity) ||
+            numericQuantity < 1 ||
+            !Number.isFinite(Number(latitude)) ||
+            !Number.isFinite(Number(longitude))
         ) {
             return res.status(400).json({
                 success: false,
@@ -98,8 +121,8 @@ export const createDonation = async (req, res) => {
         const untilDate = new Date(availableUntil);
 
         if (
-            isNaN(fromDate.getTime()) ||
-            isNaN(untilDate.getTime())
+            Number.isNaN(fromDate.getTime()) ||
+            Number.isNaN(untilDate.getTime())
         ) {
             return res.status(400).json({
                 success: false,
@@ -152,7 +175,7 @@ export const createDonation = async (req, res) => {
 
             category,
 
-            quantity: Number(quantity),
+            quantity: numericQuantity,
 
             quantityUnit,
 
@@ -206,6 +229,9 @@ export const getAllDonations = async (req, res) => {
 
         const donations = await Donation.find({
             status: "AVAILABLE",
+            availableFrom: {
+                $lte: new Date()
+            },
             availableUntil: {
                 $gt: new Date()
             }
@@ -404,12 +430,24 @@ export const updateDonation = async (req, res) => {
             quantity,
             quantityUnit,
             pickupAddress,
-            latitude,
-            longitude,
             availableFrom,
             availableUntil
         } = req.body;
 
+        let submittedLocation = req.body.pickupLocation;
+        if (typeof submittedLocation === "string") {
+            try {
+                submittedLocation = JSON.parse(submittedLocation);
+            } catch (error) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid pickupLocation format"
+                });
+            }
+        }
+
+        const latitude = req.body.latitude ?? submittedLocation?.latitude;
+        const longitude = req.body.longitude ?? submittedLocation?.longitude;
 
         // -------------------------------------------------
         // Update only provided fields
@@ -424,8 +462,19 @@ export const updateDonation = async (req, res) => {
         if (category !== undefined)
             donation.category = category;
 
-        if (quantity !== undefined)
-            donation.quantity = Number(quantity);
+        if (quantity !== undefined) {
+            const numericQuantity = Number(quantity);
+            if (
+                !Number.isFinite(numericQuantity) ||
+                numericQuantity < 1
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Quantity must be a positive number"
+                });
+            }
+            donation.quantity = numericQuantity;
+        }
 
         if (quantityUnit !== undefined)
             donation.quantityUnit = quantityUnit;
@@ -433,19 +482,65 @@ export const updateDonation = async (req, res) => {
         if (pickupAddress !== undefined)
             donation.pickupAddress = pickupAddress;
 
-        if (latitude !== undefined)
+        if (latitude !== undefined) {
+            if (
+                latitude === "" ||
+                !Number.isFinite(Number(latitude))
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Latitude must be a valid number"
+                });
+            }
             donation.pickupLocation.latitude = Number(latitude);
+        }
 
-        if (longitude !== undefined)
+        if (longitude !== undefined) {
+            if (
+                longitude === "" ||
+                !Number.isFinite(Number(longitude))
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Longitude must be a valid number"
+                });
+            }
             donation.pickupLocation.longitude = Number(longitude);
+        }
 
+        if (availableFrom !== undefined) {
+            const fromDate = new Date(availableFrom);
+            if (Number.isNaN(fromDate.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid availableFrom date"
+                });
+            }
+            donation.availableFrom = fromDate;
+        }
 
-        if (availableFrom !== undefined)
-            donation.availableFrom = new Date(availableFrom);
+        if (availableUntil !== undefined) {
+            const untilDate = new Date(availableUntil);
+            if (Number.isNaN(untilDate.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid availableUntil date"
+                });
+            }
+            donation.availableUntil = untilDate;
+        }
 
-        if (availableUntil !== undefined)
-            donation.availableUntil = new Date(availableUntil);
-
+        if (
+            availableFrom !== undefined ||
+            availableUntil !== undefined
+        ) {
+            if (donation.availableUntil <= donation.availableFrom) {
+                return res.status(400).json({
+                    success: false,
+                    message: "availableUntil must be after availableFrom"
+                });
+            }
+        }
 
         // -------------------------------------------------
         // New image

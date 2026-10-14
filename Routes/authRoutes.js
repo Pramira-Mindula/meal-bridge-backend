@@ -3,10 +3,13 @@ import express from "express";
 
 import {
     registerUser,
-    loginUser
+    loginUser,
+    getCurrentUser,
+    updateCurrentUser
 } from "../Controllers/authController.js";
 
 import upload from "../Middlewares/uploadMiddleware.js";
+import authMiddleware from "../Middlewares/authMiddleware.js";
 
 const router = express.Router();
 
@@ -23,6 +26,18 @@ router.post(
 router.post(
     "/login",
     loginUser
+);
+
+router.get(
+    "/me",
+    authMiddleware,
+    getCurrentUser
+);
+
+router.patch(
+    "/me",
+    authMiddleware,
+    updateCurrentUser
 );
 
 
