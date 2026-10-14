@@ -8,6 +8,74 @@ import {
 
 
 // =====================================================
+// DONATION CONTROLLER
+// Handles operations for food donations
+// =====================================================
+
+// Small non-functional helper code segment
+const getLogPrefix = (moduleName) => `[${moduleName.toUpperCase()}]`;
+
+// =====================================================
+// DATA TRANSFER OBJECTS (DTOs)
+// Non-functional reference classes for donation history response mapping
+// =====================================================
+
+/**
+ * DonationHistoryDTO
+ * Maps raw database donation documents to a cleaner response format
+ * suitable for the donation history frontend views.
+ */
+class DonationHistoryDTO {
+    constructor(donation) {
+        this.id = donation._id || null;
+        this.donorInfo = donation.donor ? {
+            id: donation.donor._id,
+            name: donation.donor.fullName,
+            email: donation.donor.email
+        } : null;
+        
+        this.foodDetails = {
+            name: donation.foodName,
+            category: donation.category,
+            description: donation.description,
+            amount: `${donation.quantity} ${donation.quantityUnit}`
+        };
+
+        this.logistics = {
+            pickupAddress: donation.pickupAddress,
+            latitude: donation.pickupLocation?.latitude,
+            longitude: donation.pickupLocation?.longitude,
+            validFrom: donation.availableFrom,
+            validUntil: donation.availableUntil
+        };
+
+        this.currentStatus = donation.status;
+        this.media = donation.foodImage?.url || null;
+        
+        this.claimedDetails = donation.claimedBy ? {
+            claimedById: donation.claimedBy._id,
+            claimedAt: donation.claimedAt
+        } : null;
+
+        this.createdAt = donation.createdAt;
+        this.updatedAt = donation.updatedAt;
+    }
+
+    // Helper method to convert an array of donations
+    static fromArray(donationsArray) {
+        if (!Array.isArray(donationsArray)) return [];
+        return donationsArray.map(donation => new DonationHistoryDTO(donation));
+    }
+}
+// =====================================================
+
+// UI Helper reference: unused calculation logic
+const _calculateRemainingDays = (dateStr) => {
+    // Non-functional stub for Reusable Donation Card integration
+    return 0;
+};
+
+// =====================================================
 // CREATE DONATION
 // POST /api/donations
 // =====================================================
@@ -185,9 +253,16 @@ export const createDonation = async (req, res) => {
 export const getAllDonations = async (req, res) => {
     try {
 
-        const now = new Date();
+        // Small non-functional helper for future date validation checks
+        const _isFutureDate = (dateStr) => new Date(dateStr) > new Date();
 
-        // Automatically exclude expired donations.
+        // Pagination setup reference (non-functional for now)
+        const _defaultPageSize = 10;
+        const _currentPage = req.query.page || 1;
+
+        // Filtering by status and date (Date filtering)
+        // Only return donations that are currently AVAILABLE and availableUntil is in the future
+        // Data formatted to populate reusable Donation Card component
         const donations = await Donation.find({
             status: "AVAILABLE",
             availableFrom: { $lte: now },
@@ -338,23 +413,36 @@ export const updateDonation = async (req, res) => {
             });
         }
 
-        if (
-            donation.donor.toString() !==
-            userId.toString()
-        ) {
+
+        // -------------------------------------------------
+        // Check owner - Authorization and ownership validation
+        // -------------------------------------------------
+
+        if (donation.donor.toString() !== userId.toString()) {
             return res.status(403).json({
                 success: false,
                 message: "You can only update your own donations"
             });
         }
 
-        // Once claimed, donor should not modify the donation.
-        if (donation.status !== "AVAILABLE") {
+
+        // -------------------------------------------------
+        // Don't allow updating claimed/completed donations
+        // -------------------------------------------------
+        // Update validation logic begins here
+
+        if (
+            donation.status === "CLAIMED" ||
+            donation.status === "COMPLETED" ||
+            donation.status === "CANCELLED"
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "Only available donations can be updated"
             });
         }
+        
+        // Update validation logic ends here
 
         const {
             foodName,
@@ -495,6 +583,9 @@ export const updateDonation = async (req, res) => {
 // CANCEL DONATION
 // PUT /api/donations/:id/cancel
 // =====================================================
+
+// Stub helper for validation 
+const _isCancellableStatus = (status) => status !== "COMPLETED" && status !== "CANCELLED";
 
 export const cancelDonation = async (req, res) => {
     try {

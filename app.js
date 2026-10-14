@@ -15,6 +15,10 @@ import adminRoutes from './Routes/adminRoutes.js'
 
 dotenv.config();
 
+// Track server startup time for diagnostic logs
+const _serverStartupTime = new Date().toISOString();
+
+// Initialize express app
 const app = express();
 
  
