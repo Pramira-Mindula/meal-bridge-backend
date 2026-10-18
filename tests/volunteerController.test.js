@@ -42,9 +42,9 @@ const {
 } = await import("../Controllers/deliveryController.js");
 
 const VOLUNTEER_ID = "vol111111111111111111111111";
-const DELIVERY_ID = "del111111111111111111111111";
+const DELIVERY_ID  = "del111111111111111111111111";
 const FOOD_REQUEST_ID = "req111111111111111111111111";
-const DONATION_ID = "don111111111111111111111111";
+const DONATION_ID  = "don111111111111111111111111";
 
 const makeReq = (overrides = {}) => ({
     user: { userId: VOLUNTEER_ID },
@@ -55,7 +55,7 @@ const makeReq = (overrides = {}) => ({
 const makeRes = () => {
     const res = {};
     res.status = jest.fn().mockReturnValue(res);
-    res.json = jest.fn().mockReturnValue(res);
+    res.json   = jest.fn().mockReturnValue(res);
     return res;
 };
 
@@ -65,11 +65,13 @@ const makeDelivery = (overrides = {}) => ({
     volunteer: VOLUNTEER_ID,
     foodRequest: FOOD_REQUEST_ID,
     donation: DONATION_ID,
+    cancelledByVolunteers: [],
     save: jest.fn().mockResolvedValue(true),
     populate: jest.fn().mockResolvedValue(undefined),
     ...overrides
 });
 
+// Chains any number of .populate() calls (returns this) then resolves on .sort()
 const makeFindQuery = (result) => {
     const query = {
         populate: jest.fn().mockReturnThis(),
@@ -87,6 +89,9 @@ beforeEach(() => {
 });
 
 describe("volunteer delivery flow", () => {
+
+    // ── getAvailableDeliveries ──────────────────────────────────
+
     it("lists only unclaimed PENDING deliveries", async () => {
         const deliveries = [makeDelivery({ status: "PENDING", volunteer: null })];
         mockDeliveryFind.mockReturnValue(makeFindQuery(deliveries));
@@ -108,13 +113,20 @@ describe("volunteer delivery flow", () => {
         );
     });
 
+    // ── acceptDelivery ─────────────────────────────────────────
+
     it("accepts an available delivery and assigns it to the volunteer", async () => {
         const delivery = makeDelivery();
-        mockDeliveryFindOneAndUpdate.mockReturnValue({
-            populate: jest.fn().mockReturnThis(),
-            // The controller chains four populate calls.
-            then: (resolve) => resolve(delivery)
-        });
+
+        // findOneAndUpdate chains four .populate() calls — mock returns `this`
+        // for each populate, then the outer await resolves to `delivery`.
+        const populateMock = jest.fn().mockReturnThis();
+        const findOneAndUpdateQuery = {
+            populate: populateMock,
+            // Make the object itself thenable so `await` resolves to `delivery`
+            then: (resolve) => Promise.resolve(delivery).then(resolve)
+        };
+        mockDeliveryFindOneAndUpdate.mockReturnValue(findOneAndUpdateQuery);
 
         const res = makeRes();
         await acceptDelivery(makeReq(), res);
@@ -137,8 +149,10 @@ describe("volunteer delivery flow", () => {
         expect(res.status).toHaveBeenCalledWith(200);
     });
 
+    // ── markDeliveryPickedUp ────────────────────────────────────
+
     it("moves an accepted delivery directly to IN_TRANSIT on pickup", async () => {
-        const delivery = makeDelivery();
+        const delivery = makeDelivery({ status: "ACCEPTED" });
         mockDeliveryFindOne.mockResolvedValue(delivery);
 
         const res = makeRes();
@@ -165,8 +179,10 @@ describe("volunteer delivery flow", () => {
         expect(delivery.save).not.toHaveBeenCalled();
     });
 
+    // ── cancelDelivery ──────────────────────────────────────────
+
     it("allows the assigned volunteer to cancel an ACCEPTED delivery", async () => {
-        const delivery = makeDelivery();
+        const delivery = makeDelivery({ status: "ACCEPTED" });
         mockDeliveryFindOne.mockResolvedValue(delivery);
 
         const res = makeRes();
@@ -176,13 +192,17 @@ describe("volunteer delivery flow", () => {
             _id: DELIVERY_ID,
             volunteer: VOLUNTEER_ID
         });
-        expect(delivery.status).toBe("CANCELLED");
-        expect(delivery.cancelledAt).toEqual(expect.any(Date));
+
+        // Controller re-opens the delivery: resets to PENDING and clears the volunteer
+        expect(delivery.status).toBe("PENDING");
+        expect(delivery.volunteer).toBeNull();
+        expect(delivery.cancelledAt).toBeUndefined(); // controller does not set cancelledAt in current impl
         expect(delivery.save).toHaveBeenCalled();
         expect(res.status).toHaveBeenCalledWith(200);
     });
 
-    it("does not allow cancellation after pickup", async () => {
+    it("does not allow cancellation after the delivery has gone IN_TRANSIT", async () => {
+        // Controller only allows cancellation when status is ACCEPTED or PICKED_UP
         const delivery = makeDelivery({ status: "IN_TRANSIT" });
         mockDeliveryFindOne.mockResolvedValue(delivery);
 
@@ -192,6 +212,8 @@ describe("volunteer delivery flow", () => {
         expect(res.status).toHaveBeenCalledWith(400);
         expect(delivery.save).not.toHaveBeenCalled();
     });
+
+    // ── markDeliveryDelivered ───────────────────────────────────
 
     it("marks an IN_TRANSIT delivery DELIVERED and completes related records", async () => {
         const delivery = makeDelivery({ status: "IN_TRANSIT" });

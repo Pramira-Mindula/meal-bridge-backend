@@ -305,8 +305,19 @@ export const getVolunteerHistory = async (
         // History = all terminal-state deliveries for this volunteer:
         // DELIVERED and CANCELLED
         const deliveries = await Delivery.find({
-            volunteer: userId,
-            status: { $in: ["DELIVERED", "CANCELLED"] }
+            $or: [
+                // Completed or cancelled deliveries where the volunteer is currently assigned
+                { 
+                    volunteer: userId, 
+                    status: { $in: ["DELIVERED", "CANCELLED"] } 
+                },
+                // Deliveries that were cancelled by this volunteer and re-opened to the pool
+                { 
+                    cancelledByVolunteers: { 
+                        $elemMatch: { volunteer: userId } 
+                    } 
+                }
+            ]
         })
             .populate({
                 path: "donation",

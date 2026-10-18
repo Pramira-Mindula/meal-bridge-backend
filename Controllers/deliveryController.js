@@ -47,10 +47,14 @@ export const getAvailableDeliveries = async (
                 status: "PENDING",
                 volunteer: null
             })
-                .populate(
-                    "donation",
-                    "foodName description category quantity quantityUnit foodImage pickupAddress pickupLocation donor"
-                )
+                .populate({
+                    path: "donation",
+                    select: "foodName description category quantity quantityUnit foodImage pickupAddress pickupLocation availableFrom availableUntil donor",
+                    populate: {
+                        path: "donor",
+                        select: "fullName phoneNumber email"
+                    }
+                })
                 .populate(
                     "recipient",
                     "fullName phoneNumber address location"
@@ -362,12 +366,11 @@ export const getDeliveryById = async (
 // =====================================================
 // CANCEL DELIVERY
 // PUT /api/delivery/:id/cancel
-// Volunteer can cancel an ACCEPTED or PICKED_UP delivery.
+// Volunteer cancels an ACCEPTED or PICKED_UP delivery
 // =====================================================
 
 export const cancelDelivery = async (req, res) => {
     try {
-
         const userId = req.user?.userId;
 
         if (!userId) {
@@ -398,23 +401,30 @@ export const cancelDelivery = async (req, res) => {
             });
         }
 
-        // Release the delivery back to PENDING so another volunteer can accept it
-        delivery.status    = "PENDING";
+        // Add cancellation audit record so it remains tracked in the volunteer's history
+        if (!delivery.cancelledByVolunteers) {
+            delivery.cancelledByVolunteers = [];
+        }
+        delivery.cancelledByVolunteers.push({
+            volunteer: userId,
+            cancelledAt: new Date()
+        });
+
+        // Re-open the existing delivery for other volunteers
+        delivery.status = "PENDING";
         delivery.volunteer = null;
-        delivery.acceptedAt  = null;
-        delivery.pickedUpAt  = null;
-        delivery.cancelledAt = new Date();
+        delivery.acceptedAt = null;
+        delivery.pickedUpAt = null;
 
         await delivery.save();
 
         return res.status(200).json({
             success: true,
-            message: "Delivery cancelled. It is now available for other volunteers.",
+            message: "Delivery cancelled and returned to the available pool.",
             delivery
         });
 
     } catch (error) {
-
         console.error("Cancel Delivery Error:", error);
 
         return res.status(500).json({

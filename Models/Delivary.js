@@ -9,8 +9,7 @@ const deliverySchema = new mongoose.Schema(
         foodRequest: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "FoodRequest",
-            required: true,
-            unique: true
+            required: true
         },
 
 
