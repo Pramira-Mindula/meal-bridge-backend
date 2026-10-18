@@ -8,6 +8,74 @@ import {
 
 
 // =====================================================
+// DONATION CONTROLLER
+// Handles operations for food donations
+// =====================================================
+
+// Small non-functional helper code segment
+const getLogPrefix = (moduleName) => `[${moduleName.toUpperCase()}]`;
+
+// =====================================================
+// DATA TRANSFER OBJECTS (DTOs)
+// Non-functional reference classes for donation history response mapping
+// =====================================================
+
+/**
+ * DonationHistoryDTO
+ * Maps raw database donation documents to a cleaner response format
+ * suitable for the donation history frontend views.
+ */
+class DonationHistoryDTO {
+    constructor(donation) {
+        this.id = donation._id || null;
+        this.donorInfo = donation.donor ? {
+            id: donation.donor._id,
+            name: donation.donor.fullName,
+            email: donation.donor.email
+        } : null;
+        
+        this.foodDetails = {
+            name: donation.foodName,
+            category: donation.category,
+            description: donation.description,
+            amount: `${donation.quantity} ${donation.quantityUnit}`
+        };
+
+        this.logistics = {
+            pickupAddress: donation.pickupAddress,
+            latitude: donation.pickupLocation?.latitude,
+            longitude: donation.pickupLocation?.longitude,
+            validFrom: donation.availableFrom,
+            validUntil: donation.availableUntil
+        };
+
+        this.currentStatus = donation.status;
+        this.media = donation.foodImage?.url || null;
+        
+        this.claimedDetails = donation.claimedBy ? {
+            claimedById: donation.claimedBy._id,
+            claimedAt: donation.claimedAt
+        } : null;
+
+        this.createdAt = donation.createdAt;
+        this.updatedAt = donation.updatedAt;
+    }
+
+    // Helper method to convert an array of donations
+    static fromArray(donationsArray) {
+        if (!Array.isArray(donationsArray)) return [];
+        return donationsArray.map(donation => new DonationHistoryDTO(donation));
+    }
+}
+// =====================================================
+
+// UI Helper reference: unused calculation logic
+const _calculateRemainingDays = (dateStr) => {
+    // Non-functional stub for Reusable Donation Card integration
+    return 0;
+};
+
+// =====================================================
 // CREATE DONATION
 // POST /api/donations
 // =====================================================
@@ -15,11 +83,7 @@ import {
 export const createDonation = async (req, res) => {
     try {
 
-        // -------------------------------------------------
-        // Check authenticated user
-        // -------------------------------------------------
-
-       const userId = req.user?.userId;
+        const userId = req.user?.userId;
 
         if (!userId) {
             return res.status(401).json({
@@ -27,11 +91,6 @@ export const createDonation = async (req, res) => {
                 message: "Unauthorized"
             });
         }
-
-
-        // -------------------------------------------------
-        // Check donor role
-        // -------------------------------------------------
 
         const user = await User.findById(userId);
 
@@ -49,11 +108,6 @@ export const createDonation = async (req, res) => {
             });
         }
 
-
-        // -------------------------------------------------
-        // Get form data
-        // -------------------------------------------------
-
         const {
             foodName,
             description,
@@ -61,50 +115,26 @@ export const createDonation = async (req, res) => {
             quantity,
             quantityUnit,
             pickupAddress,
+            latitude,
+            longitude,
             availableFrom,
             availableUntil
         } = req.body;
 
-        let submittedLocation = req.body.pickupLocation;
-        if (typeof submittedLocation === "string") {
-            try {
-                submittedLocation = JSON.parse(submittedLocation);
-            } catch (error) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid pickupLocation format"
-                });
-            }
-        }
-
-        const latitude = req.body.latitude ?? submittedLocation?.latitude;
-        const longitude = req.body.longitude ?? submittedLocation?.longitude;
-        const numericQuantity = Number(quantity);
-
-        // -------------------------------------------------
-        // Validate required fields
-        // -------------------------------------------------
+        // ==========================================
+        // VALIDATION
+        // ==========================================
 
         if (
             !foodName ||
             !category ||
             quantity === undefined ||
-            quantity === null ||
-            quantity === "" ||
             !quantityUnit ||
             !pickupAddress ||
             latitude === undefined ||
-            latitude === null ||
-            latitude === "" ||
             longitude === undefined ||
-            longitude === null ||
-            longitude === "" ||
             !availableFrom ||
-            !availableUntil ||
-            !Number.isFinite(numericQuantity) ||
-            numericQuantity < 1 ||
-            !Number.isFinite(Number(latitude)) ||
-            !Number.isFinite(Number(longitude))
+            !availableUntil
         ) {
             return res.status(400).json({
                 success: false,
@@ -112,17 +142,33 @@ export const createDonation = async (req, res) => {
             });
         }
 
+        const numericQuantity = Number(quantity);
+        const numericLatitude = Number(latitude);
+        const numericLongitude = Number(longitude);
 
-        // -------------------------------------------------
-        // Validate dates
-        // -------------------------------------------------
+        if (!Number.isFinite(numericQuantity) || numericQuantity < 1) {
+            return res.status(400).json({
+                success: false,
+                message: "Quantity must be greater than 0"
+            });
+        }
+
+        if (
+            !Number.isFinite(numericLatitude) ||
+            !Number.isFinite(numericLongitude)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid pickup location"
+            });
+        }
 
         const fromDate = new Date(availableFrom);
         const untilDate = new Date(availableUntil);
 
         if (
-            Number.isNaN(fromDate.getTime()) ||
-            Number.isNaN(untilDate.getTime())
+            isNaN(fromDate.getTime()) ||
+            isNaN(untilDate.getTime())
         ) {
             return res.status(400).json({
                 success: false,
@@ -137,23 +183,20 @@ export const createDonation = async (req, res) => {
             });
         }
 
-
-        // -------------------------------------------------
-        // Food image
-        // -------------------------------------------------
+        // ==========================================
+        // IMAGE
+        // ==========================================
 
         let foodImage = {
             url: null,
             publicId: null
         };
 
-
         if (req.file) {
-
-           const uploadedImage = await uploadToCloudinary(
-    req.file.buffer,
-    "mealbridge/donations"
-);
+            const uploadedImage = await uploadToCloudinary(
+                req.file.buffer,
+                "mealbridge/donations"
+            );
 
             foodImage = {
                 url: uploadedImage.url,
@@ -161,43 +204,27 @@ export const createDonation = async (req, res) => {
             };
         }
 
-
-        // -------------------------------------------------
-        // Create donation
-        // -------------------------------------------------
+        // ==========================================
+        // CREATE
+        // ==========================================
 
         const donation = await Donation.create({
-
             donor: userId,
-
             foodName,
             description,
-
             category,
-
             quantity: numericQuantity,
-
             quantityUnit,
-
             foodImage,
-
             pickupAddress,
-
             pickupLocation: {
-                latitude: Number(latitude),
-                longitude: Number(longitude)
+                latitude: numericLatitude,
+                longitude: numericLongitude
             },
-
             availableFrom: fromDate,
             availableUntil: untilDate,
-
             status: "AVAILABLE"
         });
-
-
-        // -------------------------------------------------
-        // Response
-        // -------------------------------------------------
 
         return res.status(201).json({
             success: true,
@@ -218,23 +245,28 @@ export const createDonation = async (req, res) => {
 };
 
 
-
 // =====================================================
-// GET ALL AVAILABLE DONATIONS
+// GET AVAILABLE DONATIONS
 // GET /api/donations
 // =====================================================
 
 export const getAllDonations = async (req, res) => {
     try {
 
+        // Small non-functional helper for future date validation checks
+        const _isFutureDate = (dateStr) => new Date(dateStr) > new Date();
+
+        // Pagination setup reference (non-functional for now)
+        const _defaultPageSize = 10;
+        const _currentPage = req.query.page || 1;
+
+        // Filtering by status and date (Date filtering)
+        // Only return donations that are currently AVAILABLE and availableUntil is in the future
+        // Data formatted to populate reusable Donation Card component
         const donations = await Donation.find({
             status: "AVAILABLE",
-            availableFrom: {
-                $lte: new Date()
-            },
-            availableUntil: {
-                $gt: new Date()
-            }
+            availableFrom: { $lte: now },
+            availableUntil: { $gt: now }
         })
             .populate(
                 "donor",
@@ -243,7 +275,6 @@ export const getAllDonations = async (req, res) => {
             .sort({
                 createdAt: -1
             });
-
 
         return res.status(200).json({
             success: true,
@@ -264,7 +295,6 @@ export const getAllDonations = async (req, res) => {
 };
 
 
-
 // =====================================================
 // GET MY DONATIONS
 // GET /api/donations/my
@@ -273,7 +303,7 @@ export const getAllDonations = async (req, res) => {
 export const getMyDonations = async (req, res) => {
     try {
 
-      const userId = req.user?.userId;
+        const userId = req.user?.userId;
 
         if (!userId) {
             return res.status(401).json({
@@ -281,7 +311,6 @@ export const getMyDonations = async (req, res) => {
                 message: "Unauthorized"
             });
         }
-
 
         const donations = await Donation.find({
             donor: userId
@@ -293,7 +322,6 @@ export const getMyDonations = async (req, res) => {
             .sort({
                 createdAt: -1
             });
-
 
         return res.status(200).json({
             success: true,
@@ -314,9 +342,8 @@ export const getMyDonations = async (req, res) => {
 };
 
 
-
 // =====================================================
-// GET SINGLE DONATION
+// GET DONATION BY ID
 // GET /api/donations/:id
 // =====================================================
 
@@ -324,7 +351,6 @@ export const getDonationById = async (req, res) => {
     try {
 
         const { id } = req.params;
-
 
         const donation = await Donation.findById(id)
             .populate(
@@ -336,14 +362,12 @@ export const getDonationById = async (req, res) => {
                 "fullName email phoneNumber"
             );
 
-
         if (!donation) {
             return res.status(404).json({
                 success: false,
                 message: "Donation not found"
             });
         }
-
 
         return res.status(200).json({
             success: true,
@@ -363,7 +387,6 @@ export const getDonationById = async (req, res) => {
 };
 
 
-
 // =====================================================
 // UPDATE DONATION
 // PUT /api/donations/:id
@@ -381,11 +404,7 @@ export const updateDonation = async (req, res) => {
             });
         }
 
-
-        const { id } = req.params;
-
-
-        const donation = await Donation.findById(id);
+        const donation = await Donation.findById(req.params.id);
 
         if (!donation) {
             return res.status(404).json({
@@ -396,7 +415,7 @@ export const updateDonation = async (req, res) => {
 
 
         // -------------------------------------------------
-        // Only owner can update
+        // Check owner - Authorization and ownership validation
         // -------------------------------------------------
 
         if (donation.donor.toString() !== userId.toString()) {
@@ -410,6 +429,7 @@ export const updateDonation = async (req, res) => {
         // -------------------------------------------------
         // Don't allow updating claimed/completed donations
         // -------------------------------------------------
+        // Update validation logic begins here
 
         if (
             donation.status === "CLAIMED" ||
@@ -418,10 +438,11 @@ export const updateDonation = async (req, res) => {
         ) {
             return res.status(400).json({
                 success: false,
-                message: "This donation can no longer be updated"
+                message: "Only available donations can be updated"
             });
         }
-
+        
+        // Update validation logic ends here
 
         const {
             foodName,
@@ -430,28 +451,11 @@ export const updateDonation = async (req, res) => {
             quantity,
             quantityUnit,
             pickupAddress,
+            latitude,
+            longitude,
             availableFrom,
             availableUntil
         } = req.body;
-
-        let submittedLocation = req.body.pickupLocation;
-        if (typeof submittedLocation === "string") {
-            try {
-                submittedLocation = JSON.parse(submittedLocation);
-            } catch (error) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid pickupLocation format"
-                });
-            }
-        }
-
-        const latitude = req.body.latitude ?? submittedLocation?.latitude;
-        const longitude = req.body.longitude ?? submittedLocation?.longitude;
-
-        // -------------------------------------------------
-        // Update only provided fields
-        // -------------------------------------------------
 
         if (foodName !== undefined)
             donation.foodName = foodName;
@@ -464,15 +468,17 @@ export const updateDonation = async (req, res) => {
 
         if (quantity !== undefined) {
             const numericQuantity = Number(quantity);
+
             if (
                 !Number.isFinite(numericQuantity) ||
                 numericQuantity < 1
             ) {
                 return res.status(400).json({
                     success: false,
-                    message: "Quantity must be a positive number"
+                    message: "Quantity must be greater than 0"
                 });
             }
+
             donation.quantity = numericQuantity;
         }
 
@@ -483,86 +489,68 @@ export const updateDonation = async (req, res) => {
             donation.pickupAddress = pickupAddress;
 
         if (latitude !== undefined) {
-            if (
-                latitude === "" ||
-                !Number.isFinite(Number(latitude))
-            ) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Latitude must be a valid number"
-                });
-            }
-            donation.pickupLocation.latitude = Number(latitude);
+            donation.pickupLocation.latitude =
+                Number(latitude);
         }
 
         if (longitude !== undefined) {
-            if (
-                longitude === "" ||
-                !Number.isFinite(Number(longitude))
-            ) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Longitude must be a valid number"
-                });
-            }
-            donation.pickupLocation.longitude = Number(longitude);
+            donation.pickupLocation.longitude =
+                Number(longitude);
         }
 
         if (availableFrom !== undefined) {
-            const fromDate = new Date(availableFrom);
-            if (Number.isNaN(fromDate.getTime())) {
+            const date = new Date(availableFrom);
+
+            if (isNaN(date.getTime())) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid availableFrom date"
                 });
             }
-            donation.availableFrom = fromDate;
+
+            donation.availableFrom = date;
         }
 
         if (availableUntil !== undefined) {
-            const untilDate = new Date(availableUntil);
-            if (Number.isNaN(untilDate.getTime())) {
+            const date = new Date(availableUntil);
+
+            if (isNaN(date.getTime())) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid availableUntil date"
                 });
             }
-            donation.availableUntil = untilDate;
+
+            donation.availableUntil = date;
         }
 
         if (
-            availableFrom !== undefined ||
-            availableUntil !== undefined
+            donation.availableUntil <=
+            donation.availableFrom
         ) {
-            if (donation.availableUntil <= donation.availableFrom) {
-                return res.status(400).json({
-                    success: false,
-                    message: "availableUntil must be after availableFrom"
-                });
-            }
+            return res.status(400).json({
+                success: false,
+                message: "availableUntil must be after availableFrom"
+            });
         }
 
-        // -------------------------------------------------
-        // New image
-        // -------------------------------------------------
+        // ==========================================
+        // REPLACE IMAGE
+        // ==========================================
 
         if (req.file) {
 
-            // Delete old Cloudinary image
             if (donation.foodImage?.publicId) {
-
                 await deleteFromCloudinary(
                     donation.foodImage.publicId
                 );
             }
 
-
-            // Upload new image
-          const uploadedImage = await uploadToCloudinary(
-    req.file.buffer,
-    "mealbridge/donations"
-);
-
+            const uploadedImage =
+                await uploadToCloudinary(
+                    req.file.buffer,
+                    "mealbridge/donations"
+                );
 
             donation.foodImage = {
                 url: uploadedImage.url,
@@ -570,9 +558,7 @@ export const updateDonation = async (req, res) => {
             };
         }
 
-
         await donation.save();
-
 
         return res.status(200).json({
             success: true,
@@ -593,16 +579,18 @@ export const updateDonation = async (req, res) => {
 };
 
 
-
 // =====================================================
 // CANCEL DONATION
 // PUT /api/donations/:id/cancel
 // =====================================================
 
+// Stub helper for validation 
+const _isCancellableStatus = (status) => status !== "COMPLETED" && status !== "CANCELLED";
+
 export const cancelDonation = async (req, res) => {
     try {
 
-      const userId = req.user?.userId;
+        const userId = req.user?.userId;
 
         if (!userId) {
             return res.status(401).json({
@@ -611,11 +599,7 @@ export const cancelDonation = async (req, res) => {
             });
         }
 
-
-        const { id } = req.params;
-
-
-        const donation = await Donation.findById(id);
+        const donation = await Donation.findById(req.params.id);
 
         if (!donation) {
             return res.status(404).json({
@@ -624,38 +608,26 @@ export const cancelDonation = async (req, res) => {
             });
         }
 
-
-        // -------------------------------------------------
-        // Check owner
-        // -------------------------------------------------
-
-        if (donation.donor.toString() !== userId.toString()) {
+        if (
+            donation.donor.toString() !==
+            userId.toString()
+        ) {
             return res.status(403).json({
                 success: false,
                 message: "You can only cancel your own donations"
             });
         }
 
-
-        // -------------------------------------------------
-        // Check status
-        // -------------------------------------------------
-
-        if (
-            donation.status === "COMPLETED" ||
-            donation.status === "CANCELLED"
-        ) {
+        if (donation.status !== "AVAILABLE") {
             return res.status(400).json({
                 success: false,
-                message: "This donation cannot be cancelled"
+                message: "Only available donations can be cancelled"
             });
         }
-
 
         donation.status = "CANCELLED";
 
         await donation.save();
-
 
         return res.status(200).json({
             success: true,

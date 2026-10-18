@@ -24,20 +24,14 @@ export const registerUser = async (req, res) => {
     password,
     phoneNumber,
     role,
-    address,
-    city,
-    postalCode,
-    householdMembersCount,
-    preferredLanguage
+    address
 } = req.body;
 
-let location;
+let location = undefined;
 
 if (req.body.location) {
     try {
-        location = typeof req.body.location === "string"
-            ? JSON.parse(req.body.location)
-            : req.body.location;
+        location = JSON.parse(req.body.location);
     } catch (error) {
         return res.status(400).json({
             success: false,
@@ -65,8 +59,7 @@ if (req.body.location) {
         // CHECK EXISTING USER
         // ==========================================
 
-        const normalizedEmail = email.trim().toLowerCase();
-        const existingUser = await User.findOne({ email: normalizedEmail });
+        const existingUser = await User.findOne({ email });
 
         if (existingUser) {
 
@@ -125,7 +118,7 @@ if (req.body.location) {
 
             fullName,
 
-            email: normalizedEmail,
+            email,
 
             password: hashedPassword,
 
@@ -137,15 +130,7 @@ if (req.body.location) {
 
             address,
 
-            location,
-
-            city,
-
-            postalCode,
-
-            householdMembersCount,
-
-            preferredLanguage
+            location
 
         });
 
@@ -170,29 +155,18 @@ if (req.body.location) {
 
             address: user.address,
 
-            city: user.city,
-
-            postalCode: user.postalCode,
-
-            householdMembersCount: user.householdMembersCount,
-
-            preferredLanguage: user.preferredLanguage,
-
             location: user.location,
 
             isActive: user.isActive
 
         };
 
-        const accessToken = generateAccessToken(user);
 
         return res.status(201).json({
 
             success: true,
 
             message: "User registered successfully",
-
-            accessToken,
 
             user: userResponse
 
@@ -255,12 +229,8 @@ export const loginUser = async (req, res) => {
         // FIND USER
         // ==========================================
 
-        const normalizedLogin = email.trim().toLowerCase();
         const user = await User.findOne({
-            $or: [
-                { email: normalizedLogin },
-                { phoneNumber: email.trim() }
-            ]
+            email
         });
 
 
@@ -352,14 +322,6 @@ export const loginUser = async (req, res) => {
 
                 address: user.address,
 
-                city: user.city,
-
-                postalCode: user.postalCode,
-
-                householdMembersCount: user.householdMembersCount,
-
-                preferredLanguage: user.preferredLanguage,
-
                 location: user.location,
 
                 isActive: user.isActive
@@ -386,88 +348,4 @@ export const loginUser = async (req, res) => {
 
     }
 
-};
-
-export const getCurrentUser = async (req, res) => {
-    try {
-        const user = await User.findById(req.user?.userId).select("-password");
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            user
-        });
-    } catch (error) {
-        console.error("Get Current User Error:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to retrieve user profile",
-            error: error.message
-        });
-    }
-};
-
-export const updateCurrentUser = async (req, res) => {
-    try {
-        const user = await User.findById(req.user?.userId);
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-        }
-
-        const { fullName, email, phoneNumber, address, city, postalCode } = req.body;
-
-        if (fullName !== undefined) user.fullName = fullName;
-        if (email !== undefined) {
-            const normalizedEmail = email.trim().toLowerCase();
-            const existingUser = await User.findOne({
-                email: normalizedEmail,
-                _id: { $ne: user._id }
-            });
-            if (existingUser) {
-                return res.status(409).json({
-                    success: false,
-                    message: "Email is already registered"
-                });
-            }
-            user.email = normalizedEmail;
-        }
-        if (phoneNumber !== undefined) user.phoneNumber = phoneNumber;
-        if (address !== undefined) user.address = address;
-        if (city !== undefined) user.city = city;
-        if (postalCode !== undefined) user.postalCode = postalCode;
-
-        await user.save();
-
-        return res.status(200).json({
-            success: true,
-            message: "Profile updated successfully",
-            user: {
-                id: user._id,
-                fullName: user.fullName,
-                email: user.email,
-                phoneNumber: user.phoneNumber,
-                address: user.address,
-                city: user.city,
-                postalCode: user.postalCode,
-                role: user.role,
-                location: user.location,
-                isActive: user.isActive
-            }
-        });
-    } catch (error) {
-        console.error("Update Current User Error:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to update profile",
-            error: error.message
-        });
-    }
 };

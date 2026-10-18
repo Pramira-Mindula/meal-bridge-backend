@@ -55,33 +55,6 @@ const userSchema = new mongoose.Schema(
             trim: true
         },
 
-        city: {
-            type: String,
-            trim: true
-        },
-
-        postalCode: {
-            type: String,
-            trim: true
-        },
-
-        householdMembersCount: {
-            type: Number,
-            min: 1,
-            default: 1
-        },
-
-        preferredLanguage: {
-            type: String,
-            enum: ["en", "si", "ta"],
-            default: "en"
-        },
-
-        dietaryPreferences: {
-            type: [String],
-            default: []
-        },
-
         location: {
             latitude: {
                 type: Number

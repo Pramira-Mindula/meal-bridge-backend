@@ -72,7 +72,7 @@ foodRequestSchema.index({
     status: 1
 });
 
-//food request model
+
 const FoodRequest = mongoose.model(
     "FoodRequest",
     foodRequestSchema
