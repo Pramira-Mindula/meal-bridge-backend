@@ -4,8 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "start": "nodemon app.js"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "transform": {}
   },
   "keywords": [],
   "author": "",
@@ -21,5 +29,10 @@
     "mongoose": "^9.9.2",
     "multer": "^2.2.0",
     "nodemon": "^3.1.14"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.5.0",
+    "jest": "^30.5.0",
+    "jest-mock": "^30.5.0"
   }
 }
